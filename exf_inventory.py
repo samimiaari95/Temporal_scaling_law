@@ -1,14 +1,9 @@
 from scipy.optimize import curve_fit
-from sklearn.metrics import r2_score, mean_absolute_error
-from sklearn import preprocessing
+from sklearn.metrics import r2_score
 import math
 import pandas as pd
 import numpy as np
-from scipy.stats import powerlaw, kstest, ks_2samp, anderson
-import SLOTH.sloth.toolBox
-import SLOTH.sloth.IO
-import SLOTH.sloth.PlotLib
-import SLOTH.sloth.mapper
+from scipy.stats import ks_2samp, anderson
 import os
 import matplotlib
 import matplotlib.pyplot as plt
@@ -53,7 +48,7 @@ def plot1(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t):
     ylabel = "exf_t*k*α (-)"
     return x, y, xlabel, ylabel
 
-def plot2(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t):
+def plot2(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure):
     x = alfa*d
     y = (exf_t*k*alfa)/(theta_s-theta_r)
     xlabel = "α*d (-)"
@@ -74,7 +69,7 @@ def plot4(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t):
     ylabel = "$\mathregular{t_{dry}}$/$\mathregular{t_{wet}}$ (-)"
     return x, y, xlabel, ylabel
 
-def plot5(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t):
+def plot5(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure):
     x = q*alfa*d/k
     y = exf_t*q/d
     xlabel = "q*α*d/k (-)"
@@ -88,16 +83,23 @@ def plot6(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t):
     ylabel = "exf_t (-)"
     return x, y, xlabel, ylabel
 
-def plot11(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure):
-        x = alfa*d
-        y = ((d-0.05)-abs(toplayer_pressure))/(exf_t)
-        xlabel = "alfa*d (-)"
-        ylabel = "(d-abs(ptop))/(t) (m/hr)"
-        return x, y, xlabel, ylabel
+def plot7(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure):
+    x = alfa*d
+    y = ((d-0.05)-abs(toplayer_pressure))/(exf_t)
+    xlabel = "alfa*d (-)"
+    ylabel = "(d-abs(ptop))/(t) (m/hr)"
+    return x, y, xlabel, ylabel
+
+def plot8(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure):
+    x = alfa*d
+    y = ((d-0.05)-abs(toplayer_pressure))/(exf_t*k)
+    xlabel = "alfa*d (-)"
+    ylabel = "(d-abs(ptop))/(tk) (m/hr)"
+    return x, y, xlabel, ylabel
 
 
-
-exf_cases_path = '/p/project/cslts/miaari1/python_scripts/DailyScriptBox/outputs/scalinglaw/drainage_inf_testcases_toplayer.csv'
+exf_cases_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "inputs", "drainage_inf_testcases_toplayer.csv")
+output_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs")
 
 q_column = "q"
 k_column = "k"
@@ -114,6 +116,9 @@ df = pd.read_csv(exf_cases_path)
 
 soil_types = list(df[k_column].unique())
 soil_types.sort()
+
+kmin = 10
+kmax = 0
 
 ax = plt
 ax.figure(figsize=(16,9))
@@ -138,10 +143,14 @@ for soil in soil_types:
         exf_t = df_soil[exf_t_column].iloc[i]
         toplayer_pressure = df_soil[toplayer_pressure_column].iloc[i]
         if k>=q and exf_t!=0 and (q/k)>=0.001:# and d==2:
-            x, y, xlabel, ylabel = plot11(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure)
+            x, y, xlabel, ylabel = plot5(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure)
             length += 1
             y_axis.append(y)
             x_axis.append(x)
+            if k>kmax:
+                kmax = k
+            if k<kmin:
+                kmin = k
             index += 1
 
     x_all.extend(x_axis)
@@ -176,12 +185,11 @@ y_fit = [powerlaw_func(x, a_fit, b_fit) for x in x_fit]
 plt.plot(x_fit, y_fit, color="k", label="fitted line", linewidth=5)
 plt.annotate(f"R²={round(r2,2)}\nf(x)={round(a_fit, 2)}x^({round(b_fit, 2)})", xy=(min(x_all), max(y_all)/10), color="black")
 
-ax.scatter(x_all, y_all,c=colors, cmap='jet', s=30, norm=matplotlib.colors.LogNorm())
+ax.scatter(x_all, y_all,c=colors, cmap='jet', s=30, norm=matplotlib.colors.LogNorm(vmin=kmin, vmax=kmax))
 ax.grid(True)
 ax.xscale("log")
 ax.yscale("log")
 ax.xlabel(f"{xlabel}")
 ax.ylabel(f"{ylabel}")
 ax.colorbar().ax.set_ylabel('Ks (m/hr)')
-ax.show()
-ax.savefig(os.path.join("/p/project1/cslts/miaari1/python_scripts/DailyScriptBox/outputs/scalinglaw/", "exf_scatter_scalinglaw.png"))
+ax.savefig(os.path.join(output_path, "exf_adq-k_vs_tq-d.png"))
