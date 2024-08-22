@@ -134,8 +134,8 @@ def plot12(q, k, d, n, alfa, theta_r, theta_s, t, toplayer_pressure):
     ylabel = "(d-abs(ptop))/(t*k) (-)"
     return x, y, xlabel, ylabel
 
-inf_cases_path = '/p/project1/cslts/miaari1/python_scripts/outputs/infiltration_pressure_index.csv'
-output_path = "/p/project1/cslts/miaari1/python_scripts/DailyScriptBox/outputs/scalinglaw/"
+inf_cases_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "inputs", "infiltration_pressure_index.csv")
+output_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs")
 
 q_column = "q"
 k_column = "k"
@@ -156,6 +156,8 @@ max_time = max(df[t_column])
 #print(max_time)
 min_time = min(df[t_column])
 #print(min_time)
+kmin = 10
+kmax = 0
 
 x_all = []
 y_all = []
@@ -180,6 +182,10 @@ for soil in soil_types:
             x, y, xlabel, ylabel = plot11(q, k, d, n, alfa, theta_r, theta_s, t, toplayer_pressure)
             y_axis.append(y)
             x_axis.append(x)
+            if k>kmax:
+                kmax = k
+            if k<kmin:
+                kmin = k
             index += 1
     x_all.extend(x_axis)
     y_all.extend(y_axis)
@@ -215,16 +221,16 @@ y_fit = [powerlaw_func(x, a_fit, b_fit) for x in x_fit]
 
 ax = plt
 ax.figure(figsize=(16,9))
-#ax.plot(x_fit, y_fit, color="k", label="fitted line", linewidth=5)
-#ax.annotate(f"R²={round(R_square,2)}\nf(x)={round(a_fit, 2)}x^({round(b_fit, 2)})", xy=(max(x_all)/100, min(y_all)), color="black")
-ax.scatter(x_all, y_all,c=colors, cmap='jet', s=30, norm=matplotlib.colors.LogNorm())
+ax.plot(x_fit, y_fit, color="k", label="fitted line", linewidth=5)
+ax.annotate(f"R²={round(R_square,2)}\nf(x)={round(a_fit, 2)}x^({round(b_fit, 2)})", xy=(max(x_all)/100, min(y_all)), color="black")
+ax.scatter(x_all, y_all,c=colors, cmap='jet', s=30, norm=matplotlib.colors.LogNorm(vmin=0.0001, vmax=1)) #vmin=kmin, vmax=kmax
 ax.grid(True)
 ax.xscale("log")
 ax.yscale("log")
 ax.xlabel(f"{xlabel}") # α
 ax.ylabel(f"{ylabel}")
 ax.colorbar().ax.set_ylabel('Ks (m/hr)')
-ax.savefig(os.path.join(output_path, "inf_scatter_scalinglaw.png"))
+ax.savefig(os.path.join(output_path, "inf_adq-Ks_vs_dp-t_fitted.png"))
 
 #ax.show()
 
