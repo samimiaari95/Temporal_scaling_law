@@ -1,0 +1,12 @@
+numpy
+pandas
+matplotlib
+netCDF4
+scipy
+shapely
+scikit-learn
+python-dateutil
+ydata
+geopandas
+tqdm
+heat
