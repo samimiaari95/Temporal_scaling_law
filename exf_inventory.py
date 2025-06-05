@@ -94,7 +94,7 @@ def plot8(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure):
     x = alfa*d
     y = ((d-0.05)-abs(toplayer_pressure))/(exf_t*k)
     xlabel = "alfa*d (-)"
-    ylabel = "(d-abs(ptop))/(tk) (m/hr)"
+    ylabel = "(d-abs(ptop))/(t*k) (-)"
     return x, y, xlabel, ylabel
 
 
@@ -127,9 +127,16 @@ x_all = []
 y_all = []
 colors = []
 for soil in soil_types:
+    soil = soil_types[3]
+    print("k:")
+    print(soil)
     x_axis = []
     y_axis = []
     df_soil = df[df[k_column]==soil]
+    print("d:")
+    print(df[df[k_column]==soil][d_column].unique())
+    print("alfa:")
+    print(df[df[k_column]==soil][alfa_column].unique())
     index = 0
     for i in range(len(df_soil)):
         q = df_soil[q_column].iloc[i]
@@ -142,8 +149,8 @@ for soil in soil_types:
         inf_t = df_soil[inf_t_column].iloc[i]
         exf_t = df_soil[exf_t_column].iloc[i]
         toplayer_pressure = df_soil[toplayer_pressure_column].iloc[i]
-        if k>=q and exf_t!=0 and (q/k)>=0.001:# and d==2:
-            x, y, xlabel, ylabel = plot5(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure)
+        if k>=q and exf_t!=0 and (q/k)>=0.001:# and d==4:
+            x, y, xlabel, ylabel = plot8(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure)
             length += 1
             y_axis.append(y)
             x_axis.append(x)
@@ -152,10 +159,10 @@ for soil in soil_types:
             if k<kmin:
                 kmin = k
             index += 1
-
     x_all.extend(x_axis)
     y_all.extend(y_axis)
     colors.extend([soil]*len(x_axis))
+    break
 
 # linearize
 y_lin = np.log(y_all)
@@ -192,4 +199,4 @@ ax.yscale("log")
 ax.xlabel(f"{xlabel}")
 ax.ylabel(f"{ylabel}")
 ax.colorbar().ax.set_ylabel('Ks (m/hr)')
-ax.savefig(os.path.join(output_path, "exf_adq-k_vs_tq-d.png"))
+ax.savefig(os.path.join(output_path, "testingexf_ad_vs_dp-tk.png"))

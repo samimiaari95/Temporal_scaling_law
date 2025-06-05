@@ -8,6 +8,23 @@ from scipy.optimize import curve_fit
 from sklearn.metrics import r2_score, mean_absolute_error
 
 
+def make_dir(dir_path):
+    """
+    Creates folders for every directory in the specified path, pass if the directory already exists
+    Arguments:
+    -   dir_path: path defined as a string
+    Returns:
+    -   Nothing
+    Author: Sami
+    """
+    # iterate through the defined path
+    while not os.path.isdir(dir_path):
+        # check if the parent directory exists
+        if not os.path.isdir(os.path.dirname(dir_path)):
+            make_dir(os.path.dirname(dir_path))
+        else:
+            os.mkdir(dir_path)
+
 def fit_powerlaw(x_axis, y_axis):
     def powerlaw(h, a, b):
         y = a*(h**b)

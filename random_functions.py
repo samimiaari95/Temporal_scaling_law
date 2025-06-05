@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
-import netCDF4 as nc
-import SLOTH.sloth.toolBox
+#import netCDF4 as nc
+#import SLOTH.sloth.toolBox
 import SLOTH.sloth.IO
-import SLOTH.sloth.PlotLib
-import SLOTH.sloth.mapper
+#import SLOTH.sloth.PlotLib
+#import SLOTH.sloth.mapper
 import os
 import re
 import random
@@ -15,7 +15,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from shapely.geometry import LineString
 from scipy.stats import powerlaw, kstest
-from utils import powerlaw_func, linear_law, read_nc, open_nc, delete_files
+#from utils import powerlaw_func, linear_law, make_dir
 from scipy.optimize import curve_fit
 from sklearn.metrics import r2_score, mean_absolute_error
 
@@ -2527,21 +2527,20 @@ def parflow_namelist():
     return
 
 def simulation_bash():
-    dir_path = "/p/scratch/cslts/miaari1/testcases"
     filepath = "/p/project1/cslts/miaari1/submit_simulation.sh"
     f = open(filepath, "r")
     sbatch = f.readlines()
     f.close()
-    sbatch = sbatch[:15]
+    sbatch = sbatch[:19]
     run_command = "tclsh infiltration.tcl"
     run_command_2 = "tclsh exfiltration.tcl"    
-    for i in range(0, 64):
+    for i in range(0, 100):
         case_path = f"cd /p/scratch/cslts/miaari1/infexfcases/test_case{i}"
         sbatch.append(case_path)
         sbatch.append(run_command)
         sbatch.append(run_command_2)
     
-    with open("/p/project/cslts/miaari1/submit_simulation_advanced.sh", 'w') as sbatchfile:
+    with open("/p/project/cslts/miaari1/parflow_simulations.sh", 'w') as sbatchfile:
         sbatchfile.write('\n'.join(sbatch))
     sbatchfile.close()
 
@@ -2596,7 +2595,7 @@ def steadystate_kinsol():
 
 def steadystate_kinsol_drain_inf(case_index):
     # infiltration related to drainage script
-    dir_path = "/p/scratch/cslts/miaari1/scalinglaw/scalinglaw_cases"
+    dir_path = "/p/scratch/cslts/miaari1/infexfcases"
 
     reached = False
     case_dir = os.path.join(dir_path, f"test_case{case_index}")
@@ -2625,7 +2624,7 @@ def steadystate_kinsol_drain_inf(case_index):
 
 def steadystate_kinsol_drainage():
     # exfiltration
-    dir_path = "/p/scratch/cslts/miaari1/scalinglaw/scalinglaw_cases"
+    dir_path = "/p/scratch/cslts/miaari1/infexfcases"
     data = {"case_index": [], "q": [], "k": [], "d": [], "alfa": [], "n": [], "theta_r": [], "theta_s": [], "inf_time": [], "exf_time": [], "toplayer_pressure": []}
     for case_index in range(len(os.listdir(dir_path))):
         print(case_index)
@@ -2668,7 +2667,7 @@ def steadystate_kinsol_drainage():
     print(len(data["exf_time"]))
     df = pd.DataFrame(data)
     print(df)
-    df.to_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs", "drainage_inf_testcases_toplayer.csv"), index=False)
+    df.to_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs", "inf_exf_specialcases_toplayer.csv"), index=False)
 
 
 
@@ -2752,7 +2751,7 @@ def parflow_namelist_drainage():
     import random
     dir_path = "/p/scratch/cslts/miaari1/testcases"
     filepath = "/p/project/cslts/miaari1/python_scripts/backups/exfiltration.tcl"
-    #parameters_path = "/p/project/cslts/miaari1/python_scripts/outputs/infiltration_testcases.csv"
+    parameters_path = "/p/project/cslts/miaari1/python_scripts/outputs/infiltration_testcases.csv"
     f = open(filepath, "r")
     namelist = f.readlines()
     f.close()
@@ -2904,59 +2903,47 @@ def parflow_namelist_inex_fixed():
     VG_params_path = "/p/project/cslts/miaari1/python_scripts/backups/WaterFlowParameters.csv"
     
     f = open(filepath, "r")
-    namelist = f.readlines()
+    infnamelist = f.readlines()
     f.close()
 
     exf = open(exfilepath, "r")
     exnamelist = exf.readlines()
     exf.close()
 
-    d_range = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     VG_params = pd.read_csv(VG_params_path)
     VG_indexes = [0,1,2,3,4,5,6,7,8,9,10,11]
 
-    k_namelist = namelist[64]
-    q_namelist = namelist[214]
-    d_namelist = namelist[54]
-    Nz_namelist = namelist[31]
-    alfa_namelist1 = namelist[142]
-    alfa_namelist2 = namelist[151]
-    n_namelist1 = namelist[143]
-    n_namelist2 = namelist[152]
-    porosity_namelist = namelist[129]
-    Ssat_namelist = namelist[154]
-    Sres_namelist = namelist[153]
-    klist = [0.001, 0.01, 0.1, 1]
-    q_klist = [1, 0.1, 0.01, 0.001]
-    dlist = [1, 3, 6, 10]
+    k_namelist = infnamelist[64]
+    q_namelist = infnamelist[214]
+    d_namelist = infnamelist[54]
+    Nz_namelist = infnamelist[31]
+    alfa_namelist1 = infnamelist[142]
+    alfa_namelist2 = infnamelist[151]
+    n_namelist1 = infnamelist[143]
+    n_namelist2 = infnamelist[152]
+    porosity_namelist = infnamelist[129]
+    Ssat_namelist = infnamelist[154]
+    Sres_namelist = infnamelist[153]
+    #q_vg_list = {"0.1": [0,1], "0.01":[2,3,6], "0.001":[4,5,9]}
+    q_vg_list = {"0.001":VG_indexes, "0.0001":VG_indexes, "0.00015":VG_indexes}
+    dlist = [1, 2, 3]
     i = 0
-    for k in klist:
-        
-
-        VG_index = random.choice(VG_indexes)
-        
-        #alfa = VG_params["Alpha"].iloc[VG_index]
-        #n = VG_params["n"].iloc[VG_index]
-        alfa = 3.6
-        n = 1.56
-        #theta_r = VG_params["Sr"].iloc[VG_index]
-        #theta_s = VG_params["Ss"].iloc[VG_index]
-        theta_r = 0.078
-        theta_s = 0.43
-        #k = VG_params["Ks"].iloc[VG_index]
-
-        #q_k = random.uniform(0.0001, 0.001)
-        for q_k in q_klist:
+    for q,v in q_vg_list.items():
+        for ind in v:
             for d in dlist:
-                new_namelist = namelist
-                exnew_namelist = exnamelist
-                case_path = os.path.join(dir_path, f"test_case{i}")
-                #os.mkdir(case_path)
-                q = q_k * k
+                alfa = VG_params["Alpha"].iloc[ind]
+                n = VG_params["n"].iloc[ind]
+                theta_r = VG_params["Sr"].iloc[ind]
+                theta_s = VG_params["Ss"].iloc[ind]
+                k = VG_params["Ks"].iloc[ind]
 
+                new_namelist = infnamelist
+                exnew_namelist = exnamelist
+                make_dir(os.path.join(dir_path, f"test_case{i}"))
+                
                 # infiltration        
                 new_namelist[64] = k_namelist.replace("0.01",f"{k}")
-                new_namelist[214] = q_namelist.replace("0.001", f"-{q}")
+                new_namelist[214] = q_namelist.replace("0.001", f"{q}")
                 new_namelist[142] = alfa_namelist1.replace("1.0", f"{alfa}")
                 new_namelist[151] = alfa_namelist2.replace("1.", f"{alfa}")
                 new_namelist[143] = n_namelist1.replace("2.0", f"{n}")
@@ -2982,6 +2969,7 @@ def parflow_namelist_inex_fixed():
 
 
                 settings = ["k,q,alfa,n,theta_r,theta_s,d",f"{k}",f"{q}",f"{alfa}",f"{n}",f"{theta_r}", f"{theta_s}",f"{d}"]
+                print(settings)
                 with open(os.path.join(dir_path, f"test_case{i}", "settings.txt"),'w') as settingsfile:
                     settingsfile.write('\n'.join(settings))
                 settingsfile.close()
@@ -3035,23 +3023,36 @@ def plot_ss_profiles():
     plt.show()
 
 def plot_pressure_profile():
-    name='/p/scratch/cslts/miaari1/infexfcases/test_case1/infiltration'
+    plt.rcParams.update({'font.size': 22})
+    # plt.figure(figsize=(16, 9))
+    fig, ax = plt.subplots(figsize=(16, 9))
+    name='/p/project1/cslts/miaari1/python_scripts/parflow/claysoil/infiltration'
     pressures = {}
     #pressures["z"] = [z/100 for z in range(5,400, 10)]
-    pressures["z"] = [z/10 for z in range(0,30, 1)]
+    pressures["z"] = [-1*z/10 for z in range(0,40, 1)]
+    #pressures["z"] = list(reversed(pressures["z"]))
 
-    for t in range(0, 200, 5):
-        t = 1
+    for t in range(0, 210, 10):
         print(name + '.out.satur.'+('{:05d}'.format(t))+'.pfb')
         data = SLOTH.sloth.IO.read_pfb(name + '.out.press.'+ ('{:05d}'.format(t)) + '.pfb')
 
         plt.plot(data[:,0,0], list(reversed(pressures['z'])), color="black")
+        #plt.plot(data[:,0,0], list(pressures['z']), color="black")
+        #if t==0:
+        #    plt.annotate(f"t={t} hr", xy=(min(data[:,0,0]+0.15), max(pressures['z'])-0.15), color="black")
+        #elif t==205:
+        #    plt.annotate(r"$t=t_{SS}$", xy=(min(data[:,0,0]+0.01), max(pressures['z'])-0.15), color="black")
+        
         pressures[f"time={t}"] = data[:,0,0]
 
-    plt.gca().invert_yaxis()
-    plt.xlabel("Pressure (m)")
-    plt.ylabel("Soil depth (m)")
-    plt.savefig(os.path.join("/p/project1/cslts/miaari1/python_scripts/DailyScriptBox/outputs/scalinglaw/", "pressrue_profile.png"))
+    # ax.gca().invert_yaxis()
+    #ax.invert_yaxis()
+    # your plotting code...
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.set_xlabel("Pressure head (m)")
+    ax.set_ylabel("Depth (m)")
+    fig.savefig(os.path.join("/p/project1/cslts/miaari1/python_scripts/Temporal_scaling_law", "pressrue_profile.png"))
 
 
 def KS_fit():
@@ -3352,6 +3353,75 @@ def velocities():
     ax.colorbar().ax.set_ylabel('q/Ks')
     ax.savefig(os.path.join(output_path, "inf_velocity_fitted.png"))
 
+def infexf_dependence():
+    exf_cases_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "inputs", "drainage_inf_testcases_toplayer.csv")
+    output_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs")
+    df = pd.read_csv(exf_cases_path)
+
+    q_column = "q"
+    k_column = "k"
+    d_column = "d"
+    n_column = "n"
+    alfa_column = "alfa"
+    theta_r_column = "theta_r"
+    theta_s_column = "theta_s"
+    inf_t_column = "inf_time"
+    exf_t_column = "exf_time"
+    toplayer_pressure_column = "toplayer_pressure"
+
+    # Prepare figure
+    plt.figure(figsize=(16, 9))
+    
+    # Plot each group with different color
+    for d_val, group in df.groupby(d_column):
+        y = group[exf_t_column] / group[inf_t_column]
+        x = group[d_column] - 0.05 - abs(group[toplayer_pressure_column])
+        plt.scatter(x, y, label=f"d = {d_val}")
+
+    # Plot formatting
+    plt.grid(True)
+    plt.xscale("log")
+    plt.yscale("log")
+    plt.xlabel("λ (m)")  # α
+    plt.ylabel(r"$t_{dr} /t_{inf}  (-)$")
+    plt.legend(title="d values")
+    
+    # Save plot
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_path, "exfinf_lambda.png"), dpi=300)
+    plt.close()
+
+def dexf_dependence():
+    exf_cases_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "inputs", "drainage_inf_testcases_toplayer.csv")
+    output_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs")
+    df = pd.read_csv(exf_cases_path)
+
+    d_column = "d"
+    exf_t_column = "exf_time"
+
+    # Prepare data
+    x = df[d_column]
+    y = df[exf_t_column]
+
+    # Create plot
+    # plt.figure(figsize=(10, 6))
+    plt.figure()
+    plt.scatter(x, y, color='black')  # no coloring by group
+    plt.grid(True)
+    plt.yscale("log")
+    plt.xlabel("d (m)")
+    plt.ylabel(r"$t_{dr}$ (hr)")
+    plt.tight_layout()
+
+    # Save plot
+    os.makedirs(output_path, exist_ok=True)
+    plt.savefig(os.path.join(output_path, r"tdr_vs_d.png"), dpi=300)
+    plt.close()
+
+
+
+plt.rcParams.update({'font.size': 22})
+
 #parflow_namelist_inex_fixed()
 #plot_ss_profiles()
 #plot_qk_ss()
@@ -3361,6 +3431,8 @@ def velocities():
 #parflow_namelist_inex()
 #append_csv()
 #steadystate_kinsol()
-steadystate_kinsol_drainage()
+#steadystate_kinsol_drainage()
 #plot_var_alfa_n()
 #velocities()
+#plot_pressure_profile()
+infexf_dependence()
