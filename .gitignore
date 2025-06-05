@@ -6,6 +6,11 @@ __pycache__/
 # C extensions
 *.so
 
+# directories
+claysoil_v1/
+pressureprofileexample/
+
+
 # Distribution / packaging
 .Python
 build/
