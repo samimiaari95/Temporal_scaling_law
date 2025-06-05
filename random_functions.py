@@ -15,7 +15,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from shapely.geometry import LineString
 from scipy.stats import powerlaw, kstest
-#from utils import powerlaw_func, linear_law, make_dir
+from utils import powerlaw_func, linear_law, make_dir
 from scipy.optimize import curve_fit
 from sklearn.metrics import r2_score, mean_absolute_error
 
@@ -3026,7 +3026,7 @@ def plot_pressure_profile():
     plt.rcParams.update({'font.size': 22})
     # plt.figure(figsize=(16, 9))
     fig, ax = plt.subplots(figsize=(16, 9))
-    name='/p/project1/cslts/miaari1/python_scripts/parflow/claysoil/infiltration'
+    name='/p/project1/cslts/miaari1/python_scripts/Temporal_scaling_law/pressureprofileexample/infiltration'
     pressures = {}
     #pressures["z"] = [z/100 for z in range(5,400, 10)]
     pressures["z"] = [-1*z/10 for z in range(0,40, 1)]
