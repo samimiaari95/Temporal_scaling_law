@@ -116,7 +116,7 @@ def qfit():
     ax.yscale("log")
     xlabel = r'$\alpha\cdot d (-)$'
     # xlabel = r'$d(m)$'
-    ylabel = r'$\frac{λ}{t_{dr}\cdot K_s} (-)$'
+    ylabel = r'$\frac{λ}{SST_{d}\cdot K_s} (-)$'
     # ylabel = r'$d-|\psi_{toplayer}| (m)$'
     ax.xlabel(f"{xlabel}")
     ax.ylabel(f"{ylabel}")

@@ -3383,7 +3383,7 @@ def infexf_dependence():
     plt.xscale("log")
     plt.yscale("log")
     plt.xlabel("λ (m)")  # α
-    plt.ylabel(r"$t_{dr} /t_{inf}  (-)$")
+    plt.ylabel(r"$SST_{d} /SST_{i}  (-)$")
     plt.legend(title="d values")
     
     # Save plot
@@ -3410,7 +3410,7 @@ def dexf_dependence():
     plt.grid(True)
     plt.yscale("log")
     plt.xlabel("d (m)")
-    plt.ylabel(r"$t_{dr}$ (hr)")
+    plt.ylabel(r"$SST_{d}$ (hr)")
     plt.tight_layout()
 
     # Save plot
@@ -3436,3 +3436,4 @@ plt.rcParams.update({'font.size': 22})
 #velocities()
 #plot_pressure_profile()
 infexf_dependence()
+#dexf_dependence()

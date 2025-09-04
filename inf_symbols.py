@@ -17,7 +17,7 @@ def plot11(q, k, d, n, alfa, theta_r, theta_s, inf_t, toplayer_pressure):
     x = alfa*d*q/k
     y = ((d-0.05)-abs(toplayer_pressure))/(inf_t)
     xlabel = r'$\frac{\alpha\cdot d\cdot q}{K_s} (-)$'
-    ylabel = r'$\frac{λ}{t_{inf}} (m/hr)$'
+    ylabel = r'$\frac{λ}{SST_{i}} (m/hr)$'
     return x, y, xlabel, ylabel
 
 inf_cases_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "inputs", "infiltration_pressure_index.csv")
@@ -37,17 +37,16 @@ df = pd.read_csv(inf_cases_path)
 
 soil_types = list(df[k_column].unique())
 soil_types.sort()
-
+soil_types_colors = plt.cm.jet(np.linspace(0,1,len(soil_types)))
+colors_dic = {soil_types[i]:soil_types_colors[i] for i in range(len(soil_types))}
 list_markers = ["o", "^", "s", "P", "*", "X", "d", "p", "2", r"$\clubsuit$", (5,2), "x"]
-print(len(list_markers))
+
 print(len(soil_types))
-print(soil_types)
 markers = {soil_types[i]:list_markers[i] for i in range(len(soil_types))}
-print(markers)
 
 fig, ax = plt.subplots(figsize=(16, 9))
 #ax.figure(figsize=(24,11))
-
+print("plotting points...")
 x_all = []
 y_all = []
 colors = []
@@ -69,21 +68,20 @@ for soil in soil_types:
             x, y, xlabel, ylabel = plot11(q, k, d, n, alfa, theta_r, theta_s, inf_t, toplayer_pressure)
             y_axis.append(y)
             x_axis.append(x)
-            
-            ax.scatter(x, y, c="k",s=80, marker=markers[k])#, label=k)
+
+            ax.scatter(x, y, c=colors_dic[soil], cmap='jet',s=80, marker=markers[k])#, label=k)
 
     x_all.extend(x_axis)
     y_all.extend(y_axis)
     colors.extend([soil]*len(x_axis))
 for k in markers.keys():
-    ax.scatter([],[], c="k",s=80, marker=markers[k], label=f"{np.around(k, 4)}")
+    # change logarithmic colors for every marker
+    ax.scatter([],[], c=colors_dic[k],s=80, marker=markers[k], label=f"{np.around(k, 4)}")
 
 #ax.legend(title="Ks (m/hr)", loc='center right', bbox_to_anchor=(1.135, 0.5))
 ax.legend(title="Ks (m/hr)", loc='center right', bbox_to_anchor=(1.01, 0.41))
 #ax.tight_layout()
 
-#ax.savefig(os.path.join(output_path, "inf_adq-k_vs_v.png"))
-#exit()
 # linearize
 y_lin = np.log(y_all)
 x_lin = np.log(x_all)

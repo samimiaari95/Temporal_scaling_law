@@ -16,14 +16,14 @@ def plot2(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure):
     x = alfa*d
     y = (exf_t*k*alfa)/(theta_s-theta_r)
     xlabel = r'$\alpha\cdot d (-)$'
-    ylabel = r'$\frac{t_{dr}\cdot K_s\cdot \alpha}{\theta_s-\theta_r} (-)$'
+    ylabel = r'$\frac{SST_{d}\cdot K_s\cdot \alpha}{\theta_s-\theta_r} (-)$'
     return x, y, xlabel, ylabel
 
 def plot8(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure):
     x = alfa*d
     y = ((d-0.05)-abs(toplayer_pressure))/(exf_t*k)
     xlabel = r'$\alpha\cdot d (-)$'
-    ylabel = r'$\frac{λ}{t_{dr}\cdot K_s} (-)$'
+    ylabel = r'$\frac{λ}{SST_{d}\cdot K_s} (-)$'
     return x, y, xlabel, ylabel
 
 
@@ -45,6 +45,8 @@ df = pd.read_csv(exf_cases_path)
 
 soil_types = list(df[k_column].unique())
 soil_types.sort()
+soil_types_colors = plt.cm.jet(np.linspace(0,1,len(soil_types)))
+colors_dic = {soil_types[i]:soil_types_colors[i] for i in range(len(soil_types))}
 
 list_markers = ["o", "^", "s", "P", "*", "X", "d", "p", "2", r"$\clubsuit$", (5,2), "x"]
 print(len(list_markers))
@@ -75,11 +77,11 @@ for soil in soil_types:
         exf_t = df_soil[exf_t_column].iloc[i]
         toplayer_pressure = df_soil[toplayer_pressure_column].iloc[i]
         if k>=q and exf_t!=0:# and k!=0.0025 and k!=0.0026 and k!=0.0012 and k!=0.002:
-            x, y, xlabel, ylabel = plot2(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure)
+            x, y, xlabel, ylabel = plot8(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure)
             y_axis.append(y)
             x_axis.append(x)
             
-            ax.scatter(x, y, c="k",s=80, marker=markers[k])
+            ax.scatter(x, y, c=colors_dic[soil], cmap='jet',s=80, marker=markers[k])
             # Add text labels for each point
             #labels = f"q={q:.2e}"
             #plt.text(x, y, labels, fontsize=9, ha='right', va='bottom')  # Adjust alignment as needed
@@ -89,7 +91,7 @@ for soil in soil_types:
     y_all.extend(y_axis)
     colors.extend([soil]*len(x_axis))
 for k in markers.keys():
-    ax.scatter([],[], c="k",s=80, marker=markers[k], label=f"{np.around(k, 4)}")
+    ax.scatter([],[], c=colors_dic[k],s=80, marker=markers[k], label=f"{np.around(k, 4)}")
 
 ax.legend(title="Ks (m/hr)", loc='upper right', bbox_to_anchor=(1.01, 0.8))
 # ax.legend(title="Ks (m/hr)", loc='upper right', bbox_to_anchor=(1.008, 1.018))
@@ -124,4 +126,5 @@ ax.xscale("log")
 ax.yscale("log")
 ax.xlabel(f"{xlabel}", fontsize=32)
 ax.ylabel(f"{ylabel}", fontsize=32)
-ax.savefig(os.path.join(output_path, f"exf_ad_vs_tka-thetasr_symbolstesting.png"))
+#ax.savefig(os.path.join(output_path, f"exf_ad_vs_tka-thetasr_symbolstest.png"))
+ax.savefig(os.path.join(output_path, f"exf_ad_vs_v-k_symbolstest.png"))
