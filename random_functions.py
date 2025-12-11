@@ -3353,7 +3353,7 @@ def velocities():
     ax.colorbar().ax.set_ylabel('q/Ks')
     ax.savefig(os.path.join(output_path, "inf_velocity_fitted.png"))
 
-def infexf_dependence():
+def infexf_lambda_dependence():
     exf_cases_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "inputs", "drainage_inf_testcases_toplayer.csv")
     output_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs")
     df = pd.read_csv(exf_cases_path)
@@ -3391,6 +3391,84 @@ def infexf_dependence():
     plt.savefig(os.path.join(output_path, "exfinf_lambda.png"), dpi=300)
     plt.close()
 
+def infexf_dependence():
+    from matplotlib.legend_handler import HandlerTuple
+
+    exf_cases_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "inputs", "drainage_inf_testcases_toplayer.csv")
+    output_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs")
+    df = pd.read_csv(exf_cases_path)
+
+    q_column = "q"
+    k_column = "k"
+    d_column = "d"
+    n_column = "n"
+    alfa_column = "alfa"
+    theta_r_column = "theta_r"
+    theta_s_column = "theta_s"
+    inf_t_column = "inf_time"
+    exf_t_column = "exf_time"
+    toplayer_pressure_column = "toplayer_pressure"
+
+    # Create figure and twin y-axis
+    fig, ax1 = plt.subplots(figsize=(16, 9))
+    ax2 = ax1.twinx()
+    # Create a color map for different d values
+    unique_d = sorted(df[d_column].unique())
+    colors = plt.cm.viridis(np.linspace(0, 1, len(unique_d)))
+    # Plot each group with different color
+    # for d_val, group in df.groupby(d_column):
+    #     yd = group[exf_t_column]
+    #     x = group[d_column] - 0.05 - abs(group[toplayer_pressure_column])
+    #     yi = group[inf_t_column]
+    #     # Plot exf_time on primary y-axis with transparency
+    #     ax1.scatter(x, yd, color='blue', alpha=0.5, label=r"$SST_d$ (hr)")
+    #     # Plot inf_time on secondary y-axis with transparency and different marker
+    #     ax2 = ax1.twinx()
+    #     ax2.scatter(x, yi, color='green', alpha=0.4, marker='x', label=r"$SST_i$ (hr)")
+    # For building a combined legend
+    handles = []
+    labels = []
+
+    # Plot each group with a different color
+    for color, d_val in zip(colors, unique_d):
+        group = df[df[d_column] == d_val]
+        x = group[d_column] - 0.05 - abs(group[toplayer_pressure_column])
+        yd = group[exf_t_column]
+        yi = group[inf_t_column]
+        # Plot exf_time (primary y-axis)
+        s1 = ax1.scatter(x, yd, color=color, alpha=0.6, label=fr"$SST_d$ (d={d_val} m)")
+        # Plot inf_time (secondary y-axis)
+        s2 = ax2.scatter(x, yi, color=color, alpha=0.4, marker='x', label=fr"$SST_i$ (d={d_val} m)")
+        handles.append((s1, s2))
+        labels.append(fr"d={d_val}")
+    # yd = df[exf_t_column]
+    # x = df[d_column] - 0.05 - abs(df[toplayer_pressure_column])
+    # yi = df[inf_t_column]
+    # # Plot exf_time on primary y-axis with transparency
+    # ax1.scatter(x, yd, color='blue', alpha=0.5, label=r"$SST_d$ (hr)")
+    # # Plot inf_time on secondary y-axis with transparency and different marker
+    # ax2.scatter(x, yi, color='green', alpha=0.4, marker='x', label=r"$SST_i$ (hr)")
+
+    ax1.set_xlabel("λ (m)")
+    ax1.set_ylabel(r"$SST_{d}$ (hr)")#, color='blue')
+    ax1.set_yscale('log')
+    ax1.grid(True, linestyle='--', alpha=0.3)
+    # Change axis color to match data
+    # ax1.tick_params(axis='y', colors='blue')
+    # ax1.spines['left'].set_color('blue')
+
+    ax2.set_ylabel(r"$SST_{i}$ (hr)")#, color='green')
+    ax2.set_yscale('log')
+    # Change secondary axis color to match data
+    # ax2.tick_params(axis='y', colors='green')
+    # ax2.spines['right'].set_color('green')
+    # Legend
+    ax1.legend(handles, labels, loc='lower right', fontsize=8, handler_map={tuple: HandlerTuple(ndivide=None)})
+    # Save plot
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_path, "exf_vs_inf.png"), dpi=300)
+    plt.close()
+
 def dexf_dependence():
     exf_cases_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "inputs", "drainage_inf_testcases_toplayer.csv")
     output_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs")
@@ -3414,8 +3492,85 @@ def dexf_dependence():
     plt.tight_layout()
 
     # Save plot
-    os.makedirs(output_path, exist_ok=True)
     plt.savefig(os.path.join(output_path, r"tdr_vs_d.png"), dpi=300)
+    plt.close()
+
+def dinf_dependence():
+    exf_cases_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "inputs", "drainage_inf_testcases_toplayer.csv")
+    output_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs")
+    df = pd.read_csv(exf_cases_path)
+
+    d_column = "d"
+    inf_t_column = "inf_time"
+
+    # Prepare data
+    x = df[d_column]
+    y = df[inf_t_column]
+
+    # Create plot
+    # plt.figure(figsize=(10, 6))
+    plt.figure()
+    plt.scatter(x, y, color='black')  # no coloring by group
+    plt.grid(True)
+    plt.yscale("log")
+    plt.xlabel("d (m)")
+    plt.ylabel(r"$SST_{i}$ (hr)")
+    plt.tight_layout()
+
+    # Save plot
+    plt.savefig(os.path.join(output_path, r"tinf_vs_d.png"), dpi=300)
+    plt.close()
+
+def d_exf_inf_dependence():
+    # Paths
+    exf_cases_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "inputs", "drainage_inf_testcases_toplayer.csv")
+    output_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs")
+
+    # Load data
+    df = pd.read_csv(exf_cases_path)
+
+    # Define columns
+    d_column = "d"
+    exf_t_column = "exf_time"
+    inf_t_column = "inf_time"
+
+    # Prepare data
+    x = df[d_column]
+    y1 = df[exf_t_column]
+    y2 = df[inf_t_column]
+
+    # Create figure and twin y-axis
+    fig, ax1 = plt.subplots(figsize=(8, 6))
+
+    # Plot exf_time on primary y-axis with transparency
+    ax1.scatter(x, y1, color='blue', alpha=0.5, label=r"$SST_d$ (hr)")
+    ax1.set_xlabel("d (m)")
+    ax1.set_ylabel(r"$SST_{d}$ (hr)", color='blue')
+    ax1.set_yscale('log')
+    ax1.grid(True, linestyle='--', alpha=0.3)
+
+    # Change axis color to match data
+    ax1.tick_params(axis='y', colors='blue')
+    ax1.spines['left'].set_color('blue')
+
+    # Plot inf_time on secondary y-axis with transparency and different marker
+    ax2 = ax1.twinx()
+    ax2.scatter(x, y2, color='green', alpha=0.4, marker='x', label=r"$SST_i$ (hr)")
+    ax2.set_ylabel(r"$SST_{i}$ (hr)", color='green')
+    ax2.set_yscale('log')
+
+    # Change secondary axis color to match data
+    ax2.tick_params(axis='y', colors='green')
+    ax2.spines['right'].set_color('green')
+
+    # Combine legends
+    # lines_1, labels_1 = ax1.get_legend_handles_labels()
+    # lines_2, labels_2 = ax2.get_legend_handles_labels()
+    # ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc='best')
+
+    # Save and close
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_path, "tdr_vs_d_dualaxis.png"), dpi=300)
     plt.close()
 
 
@@ -3435,5 +3590,6 @@ plt.rcParams.update({'font.size': 22})
 #plot_var_alfa_n()
 #velocities()
 #plot_pressure_profile()
-infexf_dependence()
+dinf_dependence()
+#d_exf_inf_dependence()
 #dexf_dependence()
