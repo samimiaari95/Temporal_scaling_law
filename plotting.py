@@ -96,7 +96,7 @@ def plot_pressure_profile():
     ax.set_ylabel("Depth (m)")
     
     # Save figure
-    output_path = os.path.join(DIRPATH, "pressureprofileexample", "pressure_profile.png")
+    output_path = os.path.join(DIRPATH, "pressure_profile.png")
     fig.savefig(output_path)
     plt.close()
 
