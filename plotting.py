@@ -129,10 +129,10 @@ def infexf_lambda_dependence():
     
     # Format plot
     plt.grid(True)
-    plt.xscale("log")
+    # plt.xscale("log")
     plt.yscale("log")
     plt.xlabel("λ (m)")
-    plt.ylabel(r"$SST_{d} /SST_{i}  (-)$")
+    plt.ylabel(r"$t_{d} / t_{i}  (-)$")
     plt.legend(title="d values")
     plt.tight_layout()
     
@@ -228,7 +228,7 @@ def dexf_dependence():
     plt.grid(True)
     plt.yscale("log")
     plt.xlabel("d (m)")
-    plt.ylabel(r"$SST_{d}$ (hr)")
+    plt.ylabel(r"$t_{d}$ (hr)")
     plt.tight_layout()
     
     # Save figure
@@ -257,7 +257,7 @@ def dinf_dependence():
     plt.grid(True)
     plt.yscale("log")
     plt.xlabel("d (m)")
-    plt.ylabel(r"$SST_{i}$ (hr)")
+    plt.ylabel(r"$t_{i}$ (hr)")
     plt.tight_layout()
     
     # Save figure
@@ -265,7 +265,7 @@ def dinf_dependence():
     plt.close()
 
 
-def exf_solution_plots():
+def exf_solution_plots(solution=None):
     """
     Create comprehensive plot showing drainage time scaling relationships.
     
@@ -313,11 +313,20 @@ def exf_solution_plots():
             # Filter: only cases where k >= q and exf_t is valid
             if k >= q and exf_t != 0:
                 # Compute non-dimensional variables
-                x, y, xlabel, ylabel = exfsolution_2(
-                    q, k, d, df_soil["n"].iloc[i], alfa,
-                    df_soil["theta_r"].iloc[i], df_soil["theta_s"].iloc[i],
-                    df_soil["inf_time"].iloc[i], exf_t, toplayer_pressure
-                )
+                if solution == 1:
+                    x, y, xlabel, ylabel = exfsolution_1(
+                        q, k, d, df_soil["n"].iloc[i], alfa,
+                        df_soil["theta_r"].iloc[i], df_soil["theta_s"].iloc[i],
+                        df_soil["inf_time"].iloc[i], exf_t, toplayer_pressure
+                    )
+                elif solution == 2:
+                    x, y, xlabel, ylabel = exfsolution_2(
+                        q, k, d, df_soil["n"].iloc[i], alfa,
+                        df_soil["theta_r"].iloc[i], df_soil["theta_s"].iloc[i],
+                        df_soil["inf_time"].iloc[i], exf_t, toplayer_pressure
+                    )
+                else:
+                    raise ValueError("Drainage solution must be identified as 1 or 2")
                 
                 x_all.append(x)
                 y_all.append(y)
@@ -347,7 +356,8 @@ def exf_solution_plots():
     ax.ylabel(f"{ylabel}", fontsize=32)
     
     # Save figure
-    ax.savefig(os.path.join(output_path, f"exf_ad_vs_v-k_symbolstest.png"))
+    figname = "exf_ad_vs_v-k_symbols.png" if solution == 2 else "exf_ad_vs_tka-thetasr_symbols.png"
+    ax.savefig(os.path.join(output_path, figname))
     plt.close()
 
 def exfsolution_1(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure):
@@ -364,7 +374,7 @@ def exfsolution_1(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pre
     x = alfa * d
     y = (exf_t * k * alfa) / (theta_s - theta_r)
     xlabel = r'$\alpha\cdot d (-)$'
-    ylabel = r'$\frac{SST_{d}\cdot K_s\cdot \alpha}{\theta_s-\theta_r} (-)$'
+    ylabel = r'$\frac{t_{d}\cdot K_s\cdot \alpha}{\theta_s-\theta_r} (-)$'
     return x, y, xlabel, ylabel
 
 def exfsolution_2(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure):
@@ -402,7 +412,7 @@ def exfsolution_2(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pre
     x = alfa * d
     y = ((d - 0.05) - abs(toplayer_pressure)) / (exf_t * k)
     xlabel = r'$\alpha\cdot d (-)$'
-    ylabel = r'$\frac{λ}{SST_{d}\cdot K_s} (-)$'
+    ylabel = r'$v_{d} / K_{s} (-)$'
     return x, y, xlabel, ylabel
 
 
@@ -488,7 +498,7 @@ def inf_solution_plots():
     plt.tight_layout()
     
     # Save figure
-    fig.savefig(os.path.join(output_path, "inf_adq-k_vs_v_symbolstest.png"))
+    fig.savefig(os.path.join(output_path, "inf_adq-k_vs_v_symbols.png"))
     plt.close()
 
 
@@ -527,7 +537,7 @@ def infsolution(q, k, d, n, alfa, theta_r, theta_s, inf_t, toplayer_pressure):
     x = alfa * d * q / k
     y = ((d - 0.05) - abs(toplayer_pressure)) / inf_t
     xlabel = r'$\frac{\alpha\cdot d\cdot q}{K_s} (-)$'
-    ylabel = r'$\frac{λ}{SST_{i}} (m/hr)$'
+    ylabel = r'$v_{i} (m/hr)$'
     return x, y, xlabel, ylabel
 
 
@@ -611,7 +621,7 @@ def qfit():
     ax.xscale("log")
     ax.yscale("log")
     xlabel = r'$\alpha\cdot d (-)$'
-    ylabel = r'$\frac{λ}{SST_{d}\cdot K_s} (-)$'
+    ylabel = r'$v_{d} / K_{s} (-)$'
     ax.xlabel(f"{xlabel}")
     ax.ylabel(f"{ylabel}")
     

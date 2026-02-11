@@ -32,7 +32,8 @@ def run_step(step):
         plotting.dexf_dependence()
         plotting.dinf_dependence()
         plotting.inf_solution_plots()
-        plotting.exf_solution_plots()
+        plotting.exf_solution_plots(1)
+        plotting.exf_solution_plots(2)
         plotting.qfit()
         plotting.q_vs_slope()
 
