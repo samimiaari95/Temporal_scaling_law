@@ -1,9 +1,11 @@
-from file_io import DIRPATH
+from file_io import DIRPATH, SCRATCHPATH
 from analysis import fitting_func
 import os
+import cmocean
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 from matplotlib.legend_handler import HandlerTuple
 import SLOTH.sloth.IO
 from scipy.optimize import curve_fit
@@ -14,52 +16,6 @@ from sklearn.metrics import r2_score
 # Functions for creating plots and figures
 # ==============================================================================
 
-def plot_ss_profiles():
-    """
-    Plot steady-state pressure profiles for different q/k ratios.
-    
-    Reads pressure profile .pfb files from ss_profilesplot directory
-    and creates overlaid profiles showing the effect of infiltration rate
-    relative to hydraulic conductivity.
-    """
-    plt.rcParams.update({'font.size': 22})
-    folderpath = os.path.join(DIRPATH, 'ss_profilesplot')
-    
-    # Create depth array (4m depth, 0.1m resolution)
-    z = list(range(41, 1, -1))
-    z = [x * 0.1 for x in z]
-    
-    # Get all pressure profile files
-    files = [os.path.join(folderpath, x) for x in os.listdir(folderpath)]
-    
-    # Plot each profile
-    for file in files:
-        # Parse filename to extract parameters
-        name = os.path.basename(file).replace(".pfb", "")
-        namelist = name.split("_")
-        q = float(namelist[0].replace("-", "."))
-        k = float(namelist[1].replace("-", "."))
-        t = namelist[2]
-        qk_ratio = q / k
-        
-        # Read and plot pressure profile
-        data = SLOTH.sloth.IO.read_pfb(file)
-        plt.plot(data[:, 0, 0], z, color="black")
-        plt.annotate(f"q/k={qk_ratio:.3f}", 
-                    xy=(data[-1, 0, 0], z[-1]), 
-                    color="black")
-    
-    # Format plot
-    plt.gca().invert_yaxis()
-    plt.xlim([-4, 0.2])
-    plt.xlabel("Pressure (m)")
-    plt.ylabel("Soil depth (m)")
-    
-    # Save figure
-    output_path = os.path.join(DIRPATH, 'ss_profilesplot', 'ss_profiles.png')
-    plt.savefig(output_path)
-    plt.close()
-
 
 def plot_pressure_profile():
     """
@@ -69,7 +25,7 @@ def plot_pressure_profile():
     from initial condition to steady state. Useful for visualizing the
     infiltration front propagation.
     """
-    plt.rcParams.update({'font.size': 22})
+    # plt.rcParams.update({'font.size': 16})
     fig, ax = plt.subplots(figsize=(16, 9))
     
     # Path to example simulation
@@ -94,21 +50,33 @@ def plot_pressure_profile():
     ax.spines['right'].set_visible(False)
     ax.set_xlabel("Pressure head (m)")
     ax.set_ylabel("Depth (m)")
+    plt.tight_layout()
     
     # Save figure
     output_path = os.path.join(DIRPATH, "pressure_profile.png")
-    fig.savefig(output_path)
+    fig.savefig(output_path, dpi=300)
     plt.close()
 
+def plot_failedprofile():
+    name = os.path.join(SCRATCHPATH, "infexfcases", "test_case351", "infiltration")
+    depth = [-1 * z / 10 for z in range(0, 70, 1)]
+    for t in range(0, 150):
+        pfb_file = name + '.out.press.' + ('{:05d}'.format(t)) + '.pfb'
+        data = SLOTH.sloth.IO.read_pfb(pfb_file)
+        plt.plot(data[:, 0, 0], list(reversed(depth)), color="black")
+    print(data)
+    plt.savefig(os.path.join(DIRPATH, "failed_profile.png"))
+    plt.close()
+        
 
-def infexf_lambda_dependence():
+def infexf_lambda_dependence_backup():
     """
     Plot drainage/infiltration time ratio vs. characteristic length scale.
     
     Analyzes the relationship between the drainage-to-infiltration time ratio
     and the characteristic length scale (lambda = d - |psi_top|).
     """
-    exf_cases_path = os.path.join(DIRPATH, "inputs", "drainage_inf_testcases_toplayer.csv")
+    exf_cases_path = os.path.join(DIRPATH, "inputs", "inf_exf_times_config.csv")
     output_path = os.path.join(DIRPATH, "outputs")
     df = pd.read_csv(exf_cases_path)
     
@@ -120,12 +88,13 @@ def infexf_lambda_dependence():
     
     # Create figure
     plt.figure(figsize=(16, 9))
-    
+    colors = cmocean.cm.balance(np.linspace(0, 1, len(df.groupby(d_column))))
+
     # Plot each depth group with different color
     for d_val, group in df.groupby(d_column):
         y = group[exf_t_column] / group[inf_t_column]
         x = group[d_column] - 0.05 - abs(group[toplayer_pressure_column])
-        plt.scatter(x, y, label=f"d = {d_val}")
+        plt.scatter(x, y, label=f"d = {d_val}", color=colors[list(df.groupby(d_column).groups.keys()).index(d_val)])
     
     # Format plot
     plt.grid(True)
@@ -140,61 +109,140 @@ def infexf_lambda_dependence():
     plt.savefig(os.path.join(output_path, "exfinf_lambda.png"), dpi=300)
     plt.close()
 
-def dexf_dependence():
+def infexf_lambda_dependence():
     """
-    Plot drainage steady-state time vs. soil depth.
+    Plot drainage/infiltration time ratio vs. characteristic length scale.
     
-    Shows how the time to reach steady state during drainage depends
-    on the total soil depth.
+    Analyzes the relationship between the drainage-to-infiltration time ratio
+    and the characteristic length scale (lambda = d - |psi_top|).
     """
-    exf_cases_path = os.path.join(DIRPATH, "inputs", "drainage_inf_testcases_toplayer.csv")
+    exf_cases_path = os.path.join(DIRPATH, "inputs", "inf_exf_times_config.csv")
     output_path = os.path.join(DIRPATH, "outputs")
+    df = pd.read_csv(exf_cases_path)
+    
+    # Column names
+    d_column = "d"
+    inf_t_column = "inf_time"
+    exf_t_column = "exf_time"
+    toplayer_pressure_column = "toplayer_pressure"
+    
+    # Create figure
+    fig, ax = plt.subplots(figsize=(7.09, 4))
+
+    depth_markers = {
+        1: "o",
+        2: "^",
+        3: "s",
+        4: "P",
+        5: "*",
+        6: "X",
+        7: "D",
+        8: "v",
+        9: "<",
+        10: ">",
+    }
+
+    ks_values = df["k"].to_numpy()
+    positive_ks = ks_values[ks_values > 0]
+    norm = LogNorm(vmin=np.nanmin(positive_ks), vmax=np.nanmax(positive_ks))
+    cmap = cmocean.cm.balance
+    sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
+    sm.set_array([])
+
+    # Plot each depth group with a distinct marker and Ks-based color scale
+    for d_val in sorted(df[d_column].unique()):
+        group = df[df[d_column] == d_val]
+        y = group[exf_t_column] / group[inf_t_column]
+        x = group[d_column] - 0.05 - abs(group[toplayer_pressure_column])
+        marker = depth_markers.get(int(d_val), "o")
+        ax.scatter(
+            x,
+            y,
+            label=f"d = {d_val}",
+            c=group["k"],
+            cmap=cmap,
+            norm=norm,
+            marker=marker,
+            edgecolors="none",
+            s=10,
+        )
+    
+    # Format plot
+    ax.grid(True)
+    # plt.xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("λ (m)")
+    ax.set_ylabel(r"$t_{d} / t_{i}  (-)$")
+    depth_handles = [
+        ax.scatter([], [], color="black", marker=marker, s=10, label=f"d = {depth}")
+        for depth, marker in depth_markers.items()
+    ]
+    ax.legend(handles=depth_handles, ncols=5, title="d values", fontsize='small', labelspacing=0.3, handletextpad=0.5, framealpha=0.6)
+    fig.colorbar(sm, ax=ax, label=r"$K_s$ (m/hr)", fraction=0.02, pad=0.03)
+    fig.tight_layout()
+    
+    # Save figure
+    fig.savefig(os.path.join(output_path, "exfinf_lambda.pdf"), dpi=500)
+    plt.close(fig)
+
+def depth_dependence_combined():
+    """
+    Plot steady-state time vs. soil depth for:
+    (a) Infiltration
+    (b) Drainage
+    
+    Produces a single 180 mm wide publication-ready figure.
+    """
+    # ---- Global font settings ----
+    # plt.rcParams.update({
+    #     "font.size": 16,
+    #     "axes.labelsize": 16,
+    #     "xtick.labelsize": 14,
+    #     "ytick.labelsize": 14,
+    #     "legend.fontsize": 14
+    # })
+    exf_cases_path = os.path.join(DIRPATH, "inputs", "inf_exf_times_config.csv")
+    output_path = os.path.join(DIRPATH, "outputs")
+    
     df = pd.read_csv(exf_cases_path)
     
     # Extract data
     x = df["d"]
-    y = df["exf_time"]
+    y_drain = df["exf_time"]
+    y_inf = df["inf_time"]
     
-    # Create plot
-    plt.figure()
-    plt.scatter(x, y, color='black')
-    plt.grid(True)
-    plt.yscale("log")
-    plt.xlabel("d (m)")
-    plt.ylabel(r"$t_{d}$ (hr)")
+    # --- Figure size ---
+    width_mm = 180
+    width_in = width_mm / 25.4
+    height_in = width_in * 0.5   # good aspect ratio for 2 panels
+    
+    fig, axes = plt.subplots(1, 2, figsize=(width_in, height_in), sharey=False)
+    
+    # ---- (a) Infiltration ----
+    axes[0].scatter(x, y_inf, color='black', s=10)
+    axes[0].set_yscale("log")
+    axes[0].set_xlabel("d (m)")
+    axes[0].set_ylabel(r"$t_{i}$ (hr)")
+    axes[0].grid(True, lw=0.5)
+    axes[0].text(0.85, 0.12, "(a)", transform=axes[0].transAxes,
+                 fontsize=12, fontweight="bold", va="top")
+
+    # ---- (b) Drainage ----
+    axes[1].scatter(x, y_drain, color='black', s=10)
+    axes[1].set_yscale("log")
+    axes[1].set_xlabel("d (m)")
+    axes[1].set_ylabel(r"$t_{d}$ (hr)")
+    axes[1].grid(True, lw=0.5)
+    axes[1].text(0.85, 0.12, "(b)", transform=axes[1].transAxes,
+                 fontsize=12, fontweight="bold", va="top")
+    
+    
     plt.tight_layout()
     
-    # Save figure
-    plt.savefig(os.path.join(output_path, r"tdr_vs_d.png"), dpi=300)
-    plt.close()
-
-
-def dinf_dependence():
-    """
-    Plot infiltration steady-state time vs. soil depth.
+    plt.savefig(os.path.join(output_path, "td_ti_vs_d_combined.pdf"),
+                dpi=500,
+                bbox_inches="tight")
     
-    Shows how the time to reach steady state during infiltration depends
-    on the total soil depth.
-    """
-    exf_cases_path = os.path.join(DIRPATH, "inputs", "drainage_inf_testcases_toplayer.csv")
-    output_path = os.path.join(DIRPATH, "outputs")
-    df = pd.read_csv(exf_cases_path)
-    
-    # Extract data
-    x = df["d"]
-    y = df["inf_time"]
-    
-    # Create plot
-    plt.figure()
-    plt.scatter(x, y, color='black')
-    plt.grid(True)
-    plt.yscale("log")
-    plt.xlabel("d (m)")
-    plt.ylabel(r"$t_{i}$ (hr)")
-    plt.tight_layout()
-    
-    # Save figure
-    plt.savefig(os.path.join(output_path, r"tinf_vs_d.png"), dpi=300)
     plt.close()
 
 
@@ -206,7 +254,7 @@ def exf_solution_plots(solution=None):
     against the non-dimensional depth (alpha * d) for different soil types.
     Includes power-law fit to the data.
     """
-    exf_cases_path = os.path.join(DIRPATH, "inputs", "drainage_inf_testcases_toplayer.csv")
+    exf_cases_path = os.path.join(DIRPATH, "inputs", "inf_exf_times_config.csv")
     output_path = os.path.join(DIRPATH, "outputs")
     df = pd.read_csv(exf_cases_path)
     
@@ -214,7 +262,7 @@ def exf_solution_plots(solution=None):
     soil_types = sorted(df["k"].unique())
     
     # Create color map and marker styles
-    soil_types_colors = plt.cm.jet(np.linspace(0, 1, len(soil_types)))
+    soil_types_colors = cmocean.cm.balance(np.linspace(0, 1, len(soil_types)))
     colors_dic = {soil_types[i]: soil_types_colors[i] for i in range(len(soil_types))}
     
     list_markers = ["o", "^", "s", "P", "*", "X", "d", "p", "2", r"$\clubsuit$", (5,2), "x"]
@@ -225,7 +273,7 @@ def exf_solution_plots(solution=None):
     
     # Create figure
     ax = plt
-    ax.figure(figsize=(22, 9))
+    ax.figure(figsize=(7.09, 3.65))  # 180 mm wide figure with good aspect ratio
     
     # Collect all data for fitting
     x_all = []
@@ -258,25 +306,31 @@ def exf_solution_plots(solution=None):
                         df_soil["theta_r"].iloc[i], df_soil["theta_s"].iloc[i],
                         df_soil["inf_time"].iloc[i], exf_t, toplayer_pressure
                     )
+                elif solution == 3:
+                    x, y, xlabel, ylabel = exfsolution_3(
+                        q, k, d, df_soil["n"].iloc[i], alfa,
+                        df_soil["theta_r"].iloc[i], df_soil["theta_s"].iloc[i],
+                        df_soil["inf_time"].iloc[i], exf_t, toplayer_pressure
+                    )
                 else:
-                    raise ValueError("Drainage solution must be identified as 1 or 2")
-                
+                    raise ValueError("Drainage solution must be identified as 1, 2, or 3")
+
                 x_all.append(x)
                 y_all.append(y)
                 
-                ax.scatter(x, y, c=colors_dic[soil], cmap='jet', s=80, marker=markers[k])
+                ax.scatter(x, y, c=colors_dic[soil], cmap='jet', s=20, marker=markers[k])
     
     # Create legend for soil types
     for k in markers.keys():
         ax.scatter([], [], c=colors_dic[k], s=80, marker=markers[k], 
                   label=f"{np.around(k, 4)}")
     
-    ax.legend(title="Ks (m/hr)", loc='upper right', bbox_to_anchor=(1.01, 0.8))
+    ax.legend(title="Ks (m/hr)", loc='upper right', bbox_to_anchor=(1.01, 1.01), fontsize=12)
     
     # Perform power-law fit
     x_fit, y_fit, a_fit, b_fit, r2 = fitting_func(x_all, y_all)
     
-    plt.plot(x_fit, y_fit, color="k", label="fitted line", linewidth=5)
+    #plt.plot(x_fit, y_fit, color="k", label="fitted line", linewidth=5)
     
     print(f"Power-law fit: y = {round(a_fit, 2)} * x^{round(b_fit, 2)}")
     print(f"R² = {round(r2, 2)}")
@@ -285,12 +339,15 @@ def exf_solution_plots(solution=None):
     ax.grid(True)
     ax.xscale("log")
     ax.yscale("log")
-    ax.xlabel(f"{xlabel}", fontsize=32)
-    ax.ylabel(f"{ylabel}", fontsize=32)
+    ax.xlabel(f"{xlabel}")#, fontsize=32)
+    ax.ylabel(f"{ylabel}")#, fontsize=32)
+    plt.tight_layout()
     
     # Save figure
     figname = "exf_ad_vs_v-k_symbols.png" if solution == 2 else "exf_ad_vs_tka-thetasr_symbols.png"
-    ax.savefig(os.path.join(output_path, figname))
+    if solution == 3:
+        figname = "exf_ad_vs_1td-symbols.pdf"
+    ax.savefig(os.path.join(output_path, figname), dpi=400)
     plt.close()
 
 def exfsolution_1(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure):
@@ -348,6 +405,44 @@ def exfsolution_2(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pre
     ylabel = r'$v_{d} / K_{s} (-)$'
     return x, y, xlabel, ylabel
 
+def exfsolution_3(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t, toplayer_pressure):
+    """
+    Calculate non-dimensional variables for drainage time scaling.
+    
+    Computes:
+    - x: alpha * d (non-dimensional depth)
+    - y: 1 / SST_d
+    
+    Parameters:
+    -----------
+    q : float
+        Infiltration rate (m/hr)
+    k : float
+        Hydraulic conductivity (m/hr)
+    d : float
+        Soil depth (m)
+    n : float
+        van Genuchten n parameter
+    alfa : float
+        van Genuchten alpha parameter (1/m)
+    theta_r, theta_s : float
+        Residual and saturated water contents
+    inf_t, exf_t : float
+        Infiltration and exfiltration steady-state times (hr)
+    toplayer_pressure : float
+        Pressure at top layer (m)
+    
+    Returns:
+    --------
+    tuple
+        (x, y, xlabel, ylabel) for plotting
+    """
+    x = alfa * d
+    y = 1 / exf_t
+    xlabel = r'$\alpha\cdot d (-)$'
+    ylabel = r'$1 / t_{d} (-)$'
+    return x, y, xlabel, ylabel
+
 
 def inf_solution_plots():
     """
@@ -357,7 +452,7 @@ def inf_solution_plots():
     against the non-dimensional infiltration parameter (alpha * d * q / Ks).
     Includes power-law fit to the data.
     """
-    inf_cases_path = os.path.join(DIRPATH, "inputs", "infiltration_pressure_index.csv")
+    inf_cases_path = os.path.join(DIRPATH, "inputs", "inf_exf_times_config.csv")
     output_path = os.path.join(DIRPATH, "outputs")
     df = pd.read_csv(inf_cases_path)
     
@@ -365,7 +460,7 @@ def inf_solution_plots():
     soil_types = sorted(df["k"].unique())
     
     # Create color map and markers
-    soil_types_colors = plt.cm.jet(np.linspace(0, 1, len(soil_types)))
+    soil_types_colors = cmocean.cm.balance(np.linspace(0, 1, len(soil_types)))
     colors_dic = {soil_types[i]: soil_types_colors[i] for i in range(len(soil_types))}
     
     list_markers = ["o", "^", "s", "P", "*", "X", "d", "p", "2", r"$\clubsuit$", (5,2), "x"]
@@ -389,7 +484,7 @@ def inf_solution_plots():
             k = df_soil["k"].iloc[i]
             d = df_soil["d"].iloc[i]
             alfa = df_soil["alfa"].iloc[i]
-            inf_t = df_soil["time"].iloc[i]
+            inf_t = df_soil["inf_time"].iloc[i]
             toplayer_pressure = df_soil["toplayer_pressure"].iloc[i]
             
             # Filter: only cases where k >= q
@@ -431,7 +526,7 @@ def inf_solution_plots():
     plt.tight_layout()
     
     # Save figure
-    fig.savefig(os.path.join(output_path, "inf_adq-k_vs_v_symbols.png"))
+    fig.savefig(os.path.join(output_path, "inf_adq-k_vs_v_symbols.png"), dpi=300)
     plt.close()
 
 
@@ -492,7 +587,7 @@ def qfit():
     
     # Create figure
     ax = plt
-    ax.figure(figsize=(16, 9))
+    ax.figure(figsize=(7.09, 3.65))  # 180 mm wide figure with good aspect ratio
     
     # Compute non-dimensional variables
     df["x"] = df["d"] * df["alfa"]
@@ -502,14 +597,15 @@ def qfit():
     ann_ab = {
         "0.00010.002": [r'$0.225x^{1.356}$', (0.73, 0.234386417)],
         "0.000150.002": [r'$0.234x^{1.385}$', (0.73, 0.338135512)],
-        "0.0010.0045": [r'$0.304x^{1.717}$', (2, 0.09250808557112719)],
-        "0.00010.0045": [r'$0.125x^{1.306}$', (2, 0.05052146488857635)],
-        "0.000150.0045": [r'$0.156x^{1.409}$', (2, 0.05871341875690252)],
-        "0.00050.0045": [r'$0.253x^{1.634}$', (2, 0.08165277976910569)]
+        "0.0010.0045": [r'$0.304x^{1.717}$', (2.05, 0.088)],
+        "0.00010.0045": [r'$0.125x^{1.306}$', (2.05, 0.048)],
+        "0.000150.0045": [r'$0.156x^{1.409}$', (2.05, 0.058)],
+        "0.00050.0045": [r'$0.253x^{1.634}$', (2.05, 0.074)]
     }
     
     ind = 0
-    colors = ["r", "g", "b", "darkorange"]
+    # FIX: Replaced beige/low-contrast colormap with 4 highly distinct colors
+    colors = ["#003f5c", "#58508d", "#bc5090", "#45987f"]
     
     # Plot each soil type
     for soil in soil_types:
@@ -517,7 +613,7 @@ def qfit():
             continue
         
         df_soil = df[df["k"] == soil]
-        ax.scatter(df_soil["x"], df_soil["y"], c="k", s=80, marker=markers[soil])
+        ax.scatter(df_soil["x"], df_soil["y"], c="k", s=10, marker=markers[soil])
         
         # Fit and plot each infiltration rate separately
         for q in df_soil["q"].unique():
@@ -529,37 +625,36 @@ def qfit():
             )
             
             # Plot fitted line
-            ax.plot(x_fit, y_fit, color=colors[ind], linewidth=1)
+            ax.plot(x_fit, y_fit, color=colors[ind], linewidth=2)
             
             print(f"q={q}, Ks={soil}: power law a={a_fit:.3f}, b={b_fit:.3f}, R²={r2:.3f}")
             
-            # Add annotations
+            # FIX: Merged the q label into the equation block at the roomy left-side (x=2)
             key = f"{q}{soil}"
-            ax.annotate(f"y={ann_ab[key][0]}", xy=ann_ab[key][1],
-                       color=colors[ind], fontsize=15)
-            ax.annotate(f"q={q}", 
-                       xy=(df_q["x"].tolist()[1] + 0.1, df_q["y"].tolist()[1] - 0.002),
-                       color=colors[ind], fontsize=15)
+            combined_text = f"y={ann_ab[key][0]}  $q={q}$"
+            ax.annotate(combined_text, xy=ann_ab[key][1],
+                       color=colors[ind], fontsize=11, va='center')
             
             ind += 1
     
     # Create legend
     for k in markers.keys():
-        ax.scatter([], [], c="k", s=80, marker=markers[k], label=f"{np.around(k, 4)}")
+        ax.scatter([], [], c="k", s=10, marker=markers[k], label=f"{np.around(k, 4)}")
     
-    ax.legend(title="Ks (m/hr)", loc='upper right')
+    ax.legend(title="$K_s$ (m/hr)", loc='upper right')
     
     # Format plot
-    ax.grid(True)
+    ax.grid(True, which="both", ls="--", alpha=0.5)
     ax.xscale("log")
     ax.yscale("log")
-    xlabel = r'$\alpha\cdot d (-)$'
-    ylabel = r'$v_{d} / K_{s} (-)$'
+    xlabel = r"$d' (-)$"
+    ylabel = r'$\frac{v_{d}}{K_{s}} (-)$'
     ax.xlabel(f"{xlabel}")
     ax.ylabel(f"{ylabel}")
+    plt.tight_layout(pad=0.2)
     
     # Save figure
-    ax.savefig(os.path.join(output_path, "exf_intercept_qfit.png"))
+    ax.savefig(os.path.join(output_path, "exf_intercept_qfit.pdf"), dpi=500)
     plt.close()
 
 
@@ -606,7 +701,8 @@ def q_vs_slope():
     plt.ylabel('Power laws slope')
     plt.legend()
     plt.grid(True)
+    plt.tight_layout()
     
     # Save figure
-    plt.savefig(os.path.join(output_path, "q_vs_slope2.png"))
+    plt.savefig(os.path.join(output_path, "q_vs_slope2.png"), dpi=300)
     plt.close()

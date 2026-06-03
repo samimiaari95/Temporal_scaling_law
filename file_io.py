@@ -9,7 +9,7 @@ import SLOTH.sloth.IO
 
 
 # Configure matplotlib defaults
-plt.rcParams.update({'font.size': 22})
+plt.rcParams.update({'font.size': 12})
 
 # Path constants
 DIRPATH = os.path.dirname(os.path.realpath(__file__))
