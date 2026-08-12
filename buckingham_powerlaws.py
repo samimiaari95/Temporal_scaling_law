@@ -881,6 +881,190 @@ def exf_solution_plots(solind):
     ax.savefig(os.path.join(output_path, figname), dpi=500)
     plt.close()
 
+def _powerlaw_r2_from_curve(x_values, y_values, a_fit, b_fit):
+    """
+    Evaluate a power-law curve against observed data in log space.
+
+    This mirrors the log-log comparison used by fitting_func so the returned
+    score is directly comparable to the original fit.
+    """
+    x_values = np.asarray(x_values, dtype=float)
+    y_values = np.asarray(y_values, dtype=float)
+
+    valid_mask = np.isfinite(x_values) & np.isfinite(y_values) & (x_values > 0) & (y_values > 0)
+    x_values = x_values[valid_mask]
+    y_values = y_values[valid_mask]
+
+    if x_values.size < 2:
+        raise ValueError("At least two positive data points are required to compute R².")
+
+    y_pred = powerlaw_func(x_values, a_fit, b_fit)
+    corr_matrix = np.corrcoef(np.log(y_values), np.log(y_pred))
+
+    if np.isnan(corr_matrix).any():
+        return np.nan
+
+    return corr_matrix[0, 1] ** 2
+
+def plot_solution_transferability_across_datasets(output_path=None):
+    """
+    Create 8 figures for 4 solutions across 2 CSV inputs.
+
+    For each of inf solution 1, exf solution 1, exf solution 2, and exf
+    solution 3, this function creates one figure for
+    inf_exf_times_config.csv with a fresh power-law fit and one figure for
+    tolerance_05_inf_exf_times.csv using the exact same fitted curve from the
+    first CSV.
+    """
+    if output_path is None:
+        output_path = os.path.join(DIRPATH, "outputs")
+
+    config_df = pd.read_csv(os.path.join(DIRPATH, "inputs", "inf_exf_times_config.csv"))
+    tolerance_df = pd.read_csv(os.path.join(DIRPATH, "inputs", "tolerance_05_inf_exf_times.csv"))
+
+    solution_specs = [
+        {"display_name": "inf solution 1", "slug": "inf_solution_1", "kind": "inf", "case_id": 1},
+        {"display_name": "exf solution 1", "slug": "exf_solution_1", "kind": "exf", "case_id": 1},
+        {"display_name": "exf solution 2", "slug": "exf_solution_2", "kind": "exf", "case_id": 2},
+        {"display_name": "exf solution 3", "slug": "exf_solution_3", "kind": "exf", "case_id": 3},
+    ]
+
+    def collect_rows(df, solution_spec):
+        soil_types = sorted(df["k"].unique())
+        soil_colors = cmocean.cm.balance(np.linspace(0, 1, len(soil_types)))
+        colors_dic = {soil_types[i]: soil_colors[i] for i in range(len(soil_types))}
+        list_markers = ["o", "^", "s", "P", "*", "X", "d", "p", "2", r"$\clubsuit$", (5, 2), "x"]
+        markers = {soil_types[i]: list_markers[i % len(list_markers)] for i in range(len(soil_types))}
+
+        rows = []
+        xlabel = None
+        ylabel = None
+
+        for soil in soil_types:
+            df_soil = df[df["k"] == soil]
+
+            for i in range(len(df_soil)):
+                q = df_soil["q"].iloc[i]
+                k = df_soil["k"].iloc[i]
+
+                if k < q:
+                    continue
+
+                d = df_soil["d"].iloc[i]
+                n = df_soil["n"].iloc[i]
+                alfa = df_soil["alfa"].iloc[i]
+                theta_r = df_soil["theta_r"].iloc[i]
+                theta_s = df_soil["theta_s"].iloc[i]
+                top_layer_pressure = df_soil["toplayer_pressure"].iloc[i]
+
+                if solution_spec["kind"] == "inf":
+                    x, y, xlabel, ylabel, _ = run_infsolution_case(
+                        solution_spec["case_id"],
+                        q, k, d, n, alfa, theta_r, theta_s,
+                        df_soil["inf_time"].iloc[i],
+                        top_layer_pressure,
+                    )
+                else:
+                    x, y, xlabel, ylabel, _ = run_exfsolution_case(
+                        solution_spec["case_id"],
+                        q, k, d, n, alfa, theta_r, theta_s,
+                        df_soil["exf_time"].iloc[i],
+                        top_layer_pressure,
+                    )
+
+                rows.append((x, y, soil))
+
+        return rows, xlabel, ylabel, colors_dic, markers
+
+    def draw_figure(rows, colors_dic, markers, xlabel, ylabel, title, fit_label, curve_x, curve_y, filename):
+        fig, ax = plt.subplots(figsize=(7.09, 3.54))
+
+        for x, y, soil in rows:
+            ax.scatter(x, y, c=[colors_dic[soil]], s=10, marker=markers[soil])
+
+        for soil in sorted(colors_dic.keys()):
+            ax.scatter([], [], c=[colors_dic[soil]], s=10, marker=markers[soil], label=f"{np.around(soil, 4)}")
+
+        ax.plot(curve_x, curve_y, color="k", linewidth=2, label=fit_label)
+        ax.legend(
+            title="Ks (m/hr)",
+            loc="best",
+            ncols=3,
+            fontsize='small',
+            labelspacing=0.3,
+            handletextpad=0.5,
+            framealpha=0.6,
+        )
+        ax.grid(True)
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xlabel(f"{xlabel}", fontsize=12)
+        ax.set_ylabel(f"{ylabel}", fontsize=12)
+        ax.set_title(title, fontsize=11)
+        plt.tight_layout()
+        fig.savefig(os.path.join(output_path, filename), dpi=500)
+        plt.close(fig)
+
+    results = {}
+
+    for solution_spec in solution_specs:
+        print(f"Processing {solution_spec['display_name']}...")
+        config_rows, xlabel, ylabel, config_colors, config_markers = collect_rows(config_df, solution_spec)
+        tolerance_rows, _, _, _, _ = collect_rows(tolerance_df, solution_spec)
+
+        if len(config_rows) < 2:
+            raise ValueError(f"Not enough config data points to fit {solution_spec['display_name']}.")
+        if len(tolerance_rows) < 2:
+            raise ValueError(f"Not enough tolerance data points to evaluate {solution_spec['display_name']}.")
+
+        x_config = np.asarray([row[0] for row in config_rows], dtype=float)
+        y_config = np.asarray([row[1] for row in config_rows], dtype=float)
+        x_tolerance = np.asarray([row[0] for row in tolerance_rows], dtype=float)
+        y_tolerance = np.asarray([row[1] for row in tolerance_rows], dtype=float)
+
+        _, _, a_fit, b_fit, original_r2 = fitting_func(x_config, y_config)
+        tolerance_r2 = _powerlaw_r2_from_curve(x_tolerance, y_tolerance, a_fit, b_fit)
+
+        x_config_curve = np.logspace(np.log10(np.min(x_config)), np.log10(np.max(x_config)), 200)
+        y_config_curve = powerlaw_func(x_config_curve, a_fit, b_fit)
+        x_tolerance_curve = np.logspace(np.log10(np.min(x_tolerance)), np.log10(np.max(x_tolerance)), 200)
+        y_tolerance_curve = powerlaw_func(x_tolerance_curve, a_fit, b_fit)
+
+        draw_figure(
+            config_rows,
+            config_colors,
+            config_markers,
+            xlabel,
+            ylabel,
+            f"{solution_spec['display_name']} | inf_exf_times_config.csv\noriginal fit $R^2$ = {original_r2:.3f}",
+            rf"fit: $y={a_fit:.3g}x^{{{b_fit:.3g}}}$",
+            x_config_curve,
+            y_config_curve,
+            f"{solution_spec['slug']}_config.png",
+        )
+
+        draw_figure(
+            tolerance_rows,
+            config_colors,
+            config_markers,
+            xlabel,
+            ylabel,
+            f"{solution_spec['display_name']} | tolerance_05_inf_exf_times.csv\nconfig fit $R^2$ = {original_r2:.3f}, new data $R^2$ = {tolerance_r2:.3f}",
+            rf"same fit from config: $y={a_fit:.3g}x^{{{b_fit:.3g}}}$",
+            x_tolerance_curve,
+            y_tolerance_curve,
+            f"{solution_spec['slug']}_tolerance05.png",
+        )
+
+        results[solution_spec["slug"]] = {
+            "a_fit": a_fit,
+            "b_fit": b_fit,
+            "config_r2": original_r2,
+            "tolerance_r2": tolerance_r2,
+        }
+
+    return results
+
 def evaluate_residuals_and_systematic_errors(x_values=None, y_values=None, a_fit=None, b_fit=None, xlabel="x",
                                              output_path=None, figname="residuals_vs_x.png"):
     """
@@ -1061,12 +1245,13 @@ def run_residual_analysis_dr_v():
     return results
 
 if __name__ == "__main__":
-    # for i in range(1, 22):
-    inf_solution_plots(1)
-    exf_solution_plots(1)
-    exf_solution_plots(2)
-    exf_solution_plots(3)
-    exf_solution_plots(4)
+    # inf_solution_plots(1)
+
+    # exf_solution_plots(1)
+    # exf_solution_plots(2)
+    # exf_solution_plots(3)
+
+    plot_solution_transferability_across_datasets()
     # run_residual_analysis_inf()
     # run_residual_analysis_dr_Bpi()
     # run_residual_analysis_dr_v()
