@@ -183,6 +183,7 @@ def infexf_lambda_dependence():
     
     # Save figure
     fig.savefig(os.path.join(output_path, "exfinf_lambda.pdf"), dpi=500)
+    fig.savefig(os.path.join(output_path, "exfinf_lambda.png"), dpi=500)
     plt.close(fig)
 
 def depth_dependence_combined():
@@ -242,8 +243,65 @@ def depth_dependence_combined():
     plt.savefig(os.path.join(output_path, "td_ti_vs_d_combined.pdf"),
                 dpi=500,
                 bbox_inches="tight")
+    plt.savefig(os.path.join(output_path, "td_ti_vs_d_combined.png"),
+                dpi=500,
+                bbox_inches="tight")
     
     plt.close()
+
+
+def compare_inf_exf_times_between_files():
+    """
+    Compare infiltration and exfiltration times from two input tables.
+
+    Produces a two-panel figure with infiltration time on the left and
+    exfiltration time on the right, overlaying the values from
+    tolerance_05_inf_exf_times.csv and inf_exf_times_config.csv.
+    """
+    tolerance_cases_path = os.path.join(DIRPATH, "inputs", "tolerance_05_inf_exf_times.csv")
+    config_cases_path = os.path.join(DIRPATH, "inputs", "inf_exf_times_config.csv")
+    output_path = os.path.join(DIRPATH, "outputs")
+
+    tolerance_df = pd.read_csv(tolerance_cases_path)
+    config_df = pd.read_csv(config_cases_path)
+
+    if "case_index" in tolerance_df.columns and "case_index" in config_df.columns:
+        tolerance_df = tolerance_df.set_index("case_index")
+        config_df = config_df.set_index("case_index")
+
+    inf_order = config_df.sort_values("inf_time").index
+    exf_order = config_df.sort_values("exf_time").index
+
+    tolerance_inf_df = tolerance_df.loc[inf_order]
+    config_inf_df = config_df.loc[inf_order]
+    tolerance_exf_df = tolerance_df.loc[exf_order]
+    config_exf_df = config_df.loc[exf_order]
+
+    x_inf = np.arange(len(config_inf_df))
+    x_exf = np.arange(len(config_exf_df))
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5), sharex=True)
+
+    axes[0].scatter(x_inf, tolerance_inf_df["inf_time"], label=r"ResidualTol=$10^{-5}$", color="tab:blue", marker="o", s=18, alpha=1)
+    axes[0].scatter(x_inf, config_inf_df["inf_time"], label=r"ResidualTol=$10^{-7}$", color="tab:orange", marker="s", s=18, alpha=0.5)
+
+    axes[1].scatter(x_exf, tolerance_exf_df["exf_time"], label=r"ResidualTol=$10^{-5}$", color="tab:blue", marker="o", s=18, alpha=1)
+    axes[1].scatter(x_exf, config_exf_df["exf_time"], label=r"ResidualTol=$10^{-7}$", color="tab:orange", marker="s", s=18, alpha=0.5)
+
+    axes[0].set_title("Infiltration time")
+    axes[1].set_title("Drainage time")
+
+    for ax, ylabel in zip(axes, [r"$t_{i}$ (hr)", r"$t_{d}$ (hr)"]):
+        ax.set_yscale("log")
+        ax.set_xlabel("case order (sorted by time)")
+        ax.set_ylabel(ylabel)
+        ax.grid(True, lw=0.5)
+        ax.legend(framealpha=0.7)
+
+    fig.tight_layout()
+    # fig.savefig(os.path.join(output_path, "compare_inf_exf_times_between_files.pdf"), dpi=500, bbox_inches="tight")
+    fig.savefig(os.path.join(output_path, "compare_inf_exf_times_between_files.png"), dpi=500, bbox_inches="tight")
+    plt.close(fig)
 
 
 def exf_solution_plots(solution=None):
@@ -655,6 +713,7 @@ def qfit():
     
     # Save figure
     ax.savefig(os.path.join(output_path, "exf_intercept_qfit.pdf"), dpi=500)
+    ax.savefig(os.path.join(output_path, "exf_intercept_qfit.png"), dpi=500)
     plt.close()
 
 
