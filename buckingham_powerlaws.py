@@ -976,7 +976,8 @@ def plot_solution_transferability_across_datasets(output_path=None):
 
         return rows, xlabel, ylabel, colors_dic, markers
 
-    def draw_figure(rows, colors_dic, markers, xlabel, ylabel, title, fit_label, curve_x, curve_y, filename):
+    def draw_figure(rows, colors_dic, markers, xlabel, ylabel, title, fit_label, curve_x, curve_y, filename,
+                    x_limits=None, y_limits=None):
         fig, ax = plt.subplots(figsize=(7.09, 3.54))
 
         for x, y, soil in rows:
@@ -985,7 +986,7 @@ def plot_solution_transferability_across_datasets(output_path=None):
         for soil in sorted(colors_dic.keys()):
             ax.scatter([], [], c=[colors_dic[soil]], s=10, marker=markers[soil], label=f"{np.around(soil, 4)}")
 
-        ax.plot(curve_x, curve_y, color="k", linewidth=2, label=fit_label)
+        ax.plot(curve_x, curve_y, color="k", linewidth=2)
         ax.legend(
             title="Ks (m/hr)",
             loc="best",
@@ -998,6 +999,10 @@ def plot_solution_transferability_across_datasets(output_path=None):
         ax.grid(True)
         ax.set_xscale("log")
         ax.set_yscale("log")
+        if x_limits is not None:
+            ax.set_xlim(x_limits)
+        if y_limits is not None:
+            ax.set_ylim(y_limits)
         ax.set_xlabel(f"{xlabel}", fontsize=12)
         ax.set_ylabel(f"{ylabel}", fontsize=12)
         ax.set_title(title, fontsize=11)
@@ -1022,8 +1027,21 @@ def plot_solution_transferability_across_datasets(output_path=None):
         x_tolerance = np.asarray([row[0] for row in tolerance_rows], dtype=float)
         y_tolerance = np.asarray([row[1] for row in tolerance_rows], dtype=float)
 
+        x_all = np.concatenate([x_config, x_tolerance])
+        y_all = np.concatenate([y_config, y_tolerance])
+
+        x_min = np.min(x_all)
+        x_max = np.max(x_all)
+        y_min = np.min(y_all)
+        y_max = np.max(y_all)
+
+        x_limits = (x_min, x_max)
+        y_limits = (y_min, y_max)
+
         _, _, a_fit, b_fit, original_r2 = fitting_func(x_config, y_config)
         tolerance_r2 = _powerlaw_r2_from_curve(x_tolerance, y_tolerance, a_fit, b_fit)
+        print(f"{solution_spec['display_name']} | config R² = {original_r2:.3f}, tolerance R² = {tolerance_r2:.3f}")
+        print(f"Fitted curve: y = {a_fit:.3g} * x^{b_fit:.3g}")
 
         x_config_curve = np.logspace(np.log10(np.min(x_config)), np.log10(np.max(x_config)), 200)
         y_config_curve = powerlaw_func(x_config_curve, a_fit, b_fit)
@@ -1041,6 +1059,8 @@ def plot_solution_transferability_across_datasets(output_path=None):
             x_config_curve,
             y_config_curve,
             f"{solution_spec['slug']}_config.png",
+            x_limits=x_limits,
+            y_limits=y_limits,
         )
 
         draw_figure(
@@ -1054,6 +1074,8 @@ def plot_solution_transferability_across_datasets(output_path=None):
             x_tolerance_curve,
             y_tolerance_curve,
             f"{solution_spec['slug']}_tolerance05.png",
+            x_limits=x_limits,
+            y_limits=y_limits,
         )
 
         results[solution_spec["slug"]] = {
