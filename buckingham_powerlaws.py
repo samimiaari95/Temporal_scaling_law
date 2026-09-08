@@ -976,8 +976,8 @@ def plot_solution_transferability_across_datasets(output_path=None):
 
         return rows, xlabel, ylabel, colors_dic, markers
 
-    def draw_figure(rows, colors_dic, markers, xlabel, ylabel, title, fit_label, curve_x, curve_y, filename,
-                    x_limits=None, y_limits=None):
+    def draw_figure(rows, colors_dic, markers, xlabel, ylabel, title, annotation_text, curve_x, curve_y, filename,
+                    x_limits=None, y_limits=None, annotation_loc='upper left'):
         fig, ax = plt.subplots(figsize=(7.09, 3.54))
 
         for x, y, soil in rows:
@@ -1005,7 +1005,17 @@ def plot_solution_transferability_across_datasets(output_path=None):
             ax.set_ylim(y_limits)
         ax.set_xlabel(f"{xlabel}", fontsize=12)
         ax.set_ylabel(f"{ylabel}", fontsize=12)
-        ax.set_title(title, fontsize=11)
+        # ax.set_title(title, fontsize=11)
+        ax.text(
+            0.97 if annotation_loc.endswith('right') else 0.03,
+            0.97 if annotation_loc.startswith('upper') else 0.03,
+            annotation_text,
+            transform=ax.transAxes,
+            va='top' if annotation_loc.startswith('upper') else 'bottom',
+            ha='right' if annotation_loc.endswith('right') else 'left',
+            fontsize=10,
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='0.7', alpha=0.85),
+        )
         plt.tight_layout()
         fig.savefig(os.path.join(output_path, filename), dpi=500)
         plt.close(fig)
@@ -1054,8 +1064,8 @@ def plot_solution_transferability_across_datasets(output_path=None):
             config_markers,
             xlabel,
             ylabel,
-            f"{solution_spec['display_name']} | inf_exf_times_config.csv\noriginal fit $R^2$ = {original_r2:.3f}",
-            rf"fit: $y={a_fit:.3g}x^{{{b_fit:.3g}}}$",
+            f"{solution_spec['display_name']} | inf_exf_times_config.csv",
+            rf"$R^2$ (Solver residual tolerance $10^{{-7}}$) = {original_r2:.3f}",
             x_config_curve,
             y_config_curve,
             f"{solution_spec['slug']}_config.png",
@@ -1069,13 +1079,16 @@ def plot_solution_transferability_across_datasets(output_path=None):
             config_markers,
             xlabel,
             ylabel,
-            f"{solution_spec['display_name']} | tolerance_05_inf_exf_times.csv\nconfig fit $R^2$ = {original_r2:.3f}, new data $R^2$ = {tolerance_r2:.3f}",
-            rf"same fit from config: $y={a_fit:.3g}x^{{{b_fit:.3g}}}$",
+            f"{solution_spec['display_name']} | tolerance_05_inf_exf_times.csv",
+            rf"$R^2$ (Solver residual tolerance $10^{{-7}}$) = {original_r2:.3f}"
+            "\n"
+            rf"$R^2$ (Solver residual tolerance $10^{{-5}}$) = {tolerance_r2:.3f}",
             x_tolerance_curve,
             y_tolerance_curve,
             f"{solution_spec['slug']}_tolerance05.png",
             x_limits=x_limits,
             y_limits=y_limits,
+            annotation_loc='upper right' if solution_spec['slug'] == 'inf_solution_1' else 'lower left' if solution_spec['slug'] == 'exf_solution_1' else 'upper left',
         )
 
         results[solution_spec["slug"]] = {
