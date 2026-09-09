@@ -1295,12 +1295,8 @@ def run_residual_analysis_dr_v():
 
 if __name__ == "__main__":
     # inf_solution_plots(1)
-
     # exf_solution_plots(1)
     # exf_solution_plots(2)
     # exf_solution_plots(3)
 
     plot_solution_transferability_across_datasets()
-    # run_residual_analysis_inf()
-    # run_residual_analysis_dr_Bpi()
-    # run_residual_analysis_dr_v()
