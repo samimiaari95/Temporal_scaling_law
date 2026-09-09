@@ -908,13 +908,13 @@ def _powerlaw_r2_from_curve(x_values, y_values, a_fit, b_fit):
 
 def plot_solution_transferability_across_datasets(output_path=None):
     """
-    Create 8 figures for 4 solutions across 2 CSV inputs.
+    Create one vertically stacked figure for each of 4 solutions across 2 CSV inputs.
 
     For each of inf solution 1, exf solution 1, exf solution 2, and exf
-    solution 3, this function creates one figure for
-    inf_exf_times_config.csv with a fresh power-law fit and one figure for
-    tolerance_05_inf_exf_times.csv using the exact same fitted curve from the
-    first CSV.
+    solution 3, this function creates one figure with two subplots: the top
+    subplot uses inf_exf_times_config.csv and the bottom subplot uses
+    tolerance_05_inf_exf_times.csv with the same fitted curve from the first
+    CSV.
     """
     if output_path is None:
         output_path = os.path.join(DIRPATH, "outputs")
@@ -976,10 +976,8 @@ def plot_solution_transferability_across_datasets(output_path=None):
 
         return rows, xlabel, ylabel, colors_dic, markers
 
-    def draw_figure(rows, colors_dic, markers, xlabel, ylabel, title, annotation_text, curve_x, curve_y, filename,
-                    x_limits=None, y_limits=None, annotation_loc='upper left'):
-        fig, ax = plt.subplots(figsize=(7.09, 3.54))
-
+    def draw_subplot(ax, rows, colors_dic, markers, xlabel, ylabel, curve_x, curve_y, annotation_text,
+                     x_limits=None, y_limits=None, annotation_loc='upper left', panel_label=None):
         for x, y, soil in rows:
             ax.scatter(x, y, c=[colors_dic[soil]], s=10, marker=markers[soil])
 
@@ -1005,7 +1003,18 @@ def plot_solution_transferability_across_datasets(output_path=None):
             ax.set_ylim(y_limits)
         ax.set_xlabel(f"{xlabel}", fontsize=12)
         ax.set_ylabel(f"{ylabel}", fontsize=12)
-        # ax.set_title(title, fontsize=11)
+        if panel_label is not None:
+            ax.text(
+                0.02,
+                0.98,
+                panel_label,
+                transform=ax.transAxes,
+                va='top',
+                ha='left',
+                fontsize=12,
+                fontweight='bold',
+                bbox=dict(boxstyle='round,pad=0.2', facecolor='white', edgecolor='none', alpha=0.65),
+            )
         ax.text(
             0.97 if annotation_loc.endswith('right') else 0.03,
             0.97 if annotation_loc.startswith('upper') else 0.03,
@@ -1014,11 +1023,8 @@ def plot_solution_transferability_across_datasets(output_path=None):
             va='top' if annotation_loc.startswith('upper') else 'bottom',
             ha='right' if annotation_loc.endswith('right') else 'left',
             fontsize=10,
-            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='0.7', alpha=0.85),
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='none', alpha=0.6),
         )
-        plt.tight_layout()
-        fig.savefig(os.path.join(output_path, filename), dpi=500)
-        plt.close(fig)
 
     results = {}
 
@@ -1058,38 +1064,46 @@ def plot_solution_transferability_across_datasets(output_path=None):
         x_tolerance_curve = np.logspace(np.log10(np.min(x_tolerance)), np.log10(np.max(x_tolerance)), 200)
         y_tolerance_curve = powerlaw_func(x_tolerance_curve, a_fit, b_fit)
 
-        draw_figure(
+        fig, axes = plt.subplots(2, 1, figsize=(7.09, 7.08), sharex=False)
+
+        draw_subplot(
+            axes[0],
             config_rows,
             config_colors,
             config_markers,
             xlabel,
             ylabel,
-            f"{solution_spec['display_name']} | inf_exf_times_config.csv",
-            rf"$R^2$ (Solver residual tolerance $10^{{-7}}$) = {original_r2:.3f}",
             x_config_curve,
             y_config_curve,
-            f"{solution_spec['slug']}_config.png",
+            rf"$R^2$ (Solver residual tolerance $10^{{-7}}$) = {original_r2:.3f}",
             x_limits=x_limits,
             y_limits=y_limits,
+            annotation_loc='lower left' if solution_spec['slug'] == 'exf_solution_1' else 'upper right',
+            panel_label='(a)',
         )
 
-        draw_figure(
+        draw_subplot(
+            axes[1],
             tolerance_rows,
             config_colors,
             config_markers,
             xlabel,
             ylabel,
-            f"{solution_spec['display_name']} | tolerance_05_inf_exf_times.csv",
-            rf"$R^2$ (Solver residual tolerance $10^{{-7}}$) = {original_r2:.3f}"
-            "\n"
-            rf"$R^2$ (Solver residual tolerance $10^{{-5}}$) = {tolerance_r2:.3f}",
             x_tolerance_curve,
             y_tolerance_curve,
-            f"{solution_spec['slug']}_tolerance05.png",
+            # rf"$R^2$ (Solver residual tolerance $10^{{-7}}$) = {original_r2:.3f}"
+            # "\n"
+            rf"$R^2$ (Solver residual tolerance $10^{{-5}}$) = {tolerance_r2:.3f}",
             x_limits=x_limits,
             y_limits=y_limits,
-            annotation_loc='upper right' if solution_spec['slug'] == 'inf_solution_1' else 'lower left' if solution_spec['slug'] == 'exf_solution_1' else 'upper left',
+            annotation_loc='lower left' if solution_spec['slug'] == 'exf_solution_1' else 'upper right',
+            panel_label='(b)',
         )
+
+        # fig.suptitle(solution_spec['display_name'], fontsize=12)
+        fig.tight_layout(rect=(0, 0, 1, 0.97))
+        fig.savefig(os.path.join(output_path, f"{solution_spec['slug']}_transferability.png"), dpi=500)
+        plt.close(fig)
 
         results[solution_spec["slug"]] = {
             "a_fit": a_fit,
