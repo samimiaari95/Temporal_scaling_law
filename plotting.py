@@ -257,6 +257,7 @@ def compare_inf_exf_times_between_files():
     Produces a two-panel figure with infiltration time on the left and
     exfiltration time on the right, overlaying the values from
     tolerance_05_inf_exf_times.csv and inf_exf_times_config.csv.
+    The x-axis is water table depth from the CSV `d` column, sorted from shallow to deep.
     """
     tolerance_cases_path = os.path.join(DIRPATH, "inputs", "tolerance_05_inf_exf_times.csv")
     config_cases_path = os.path.join(DIRPATH, "inputs", "inf_exf_times_config.csv")
@@ -269,31 +270,38 @@ def compare_inf_exf_times_between_files():
         tolerance_df = tolerance_df.set_index("case_index")
         config_df = config_df.set_index("case_index")
 
-    inf_order = config_df.sort_values("inf_time").index
-    exf_order = config_df.sort_values("exf_time").index
+    tolerance_df = tolerance_df.assign(water_table_depth=tolerance_df["d"])
+    config_df = config_df.assign(water_table_depth=config_df["d"])
 
-    tolerance_inf_df = tolerance_df.loc[inf_order]
-    config_inf_df = config_df.loc[inf_order]
-    tolerance_exf_df = tolerance_df.loc[exf_order]
-    config_exf_df = config_df.loc[exf_order]
+    tolerance_inf_df = tolerance_df.sort_values("water_table_depth")
+    config_inf_df = config_df.sort_values("water_table_depth")
+    tolerance_exf_df = tolerance_df.sort_values("water_table_depth")
+    config_exf_df = config_df.sort_values("water_table_depth")
+    tolerance_inf_df = tolerance_inf_df[tolerance_inf_df["inf_time"] > 1]
+    config_inf_df = config_inf_df[config_inf_df["inf_time"] > 1]
+    tolerance_exf_df = tolerance_exf_df[tolerance_exf_df["exf_time"] > 1]
+    config_exf_df = config_exf_df[config_exf_df["exf_time"] > 1]
 
-    x_inf = np.arange(len(config_inf_df))
-    x_exf = np.arange(len(config_exf_df))
+    x_inf_config = config_inf_df["water_table_depth"].to_numpy()
+    x_exf_config = config_exf_df["water_table_depth"].to_numpy()
+    x_inf_tolerance = tolerance_inf_df["water_table_depth"].to_numpy()
+    x_exf_tolerance = tolerance_exf_df["water_table_depth"].to_numpy()
+    print("plotting it")
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.5), sharex=True)
 
-    axes[0].scatter(x_inf, tolerance_inf_df["inf_time"], label=r"ResidualTol=$10^{-5}$", color="tab:blue", marker="o", s=18, alpha=1)
-    axes[0].scatter(x_inf, config_inf_df["inf_time"], label=r"ResidualTol=$10^{-7}$", color="tab:orange", marker="s", s=18, alpha=0.5)
+    axes[0].scatter(x_inf_tolerance, tolerance_inf_df["inf_time"], label=r"ResidualTol=$10^{-5}$", color="tab:blue", marker="o", s=18, alpha=1)
+    axes[0].scatter(x_inf_config, config_inf_df["inf_time"], label=r"ResidualTol=$10^{-7}$", color="tab:orange", marker="o", s=18, alpha=0.5)
 
-    axes[1].scatter(x_exf, tolerance_exf_df["exf_time"], label=r"ResidualTol=$10^{-5}$", color="tab:blue", marker="o", s=18, alpha=1)
-    axes[1].scatter(x_exf, config_exf_df["exf_time"], label=r"ResidualTol=$10^{-7}$", color="tab:orange", marker="s", s=18, alpha=0.5)
+    axes[1].scatter(x_exf_tolerance, tolerance_exf_df["exf_time"], label=r"ResidualTol=$10^{-5}$", color="tab:blue", marker="o", s=18, alpha=1)
+    axes[1].scatter(x_exf_config, config_exf_df["exf_time"], label=r"ResidualTol=$10^{-7}$", color="tab:orange", marker="o", s=18, alpha=0.5)
 
     axes[0].set_title("Infiltration time")
     axes[1].set_title("Drainage time")
 
     for ax, ylabel in zip(axes, [r"$t_{i}$ (hr)", r"$t_{d}$ (hr)"]):
         ax.set_yscale("log")
-        ax.set_xlabel("case order (sorted by time)")
+        ax.set_xlabel("water table depth (m)")
         ax.set_ylabel(ylabel)
         ax.grid(True, lw=0.5)
         ax.legend(framealpha=0.7)
