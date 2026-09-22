@@ -290,21 +290,36 @@ def compare_inf_exf_times_between_files():
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.5), sharex=True)
 
-    axes[0].scatter(x_inf_tolerance, tolerance_inf_df["inf_time"], label=r"ResidualTol=$10^{-5}$", color="tab:blue", marker="o", s=18, alpha=1)
-    axes[0].scatter(x_inf_config, config_inf_df["inf_time"], label=r"ResidualTol=$10^{-7}$", color="tab:orange", marker="o", s=18, alpha=0.5)
+    plt.rcParams.update({
+        "font.size": 15,
+        "axes.labelsize": 17,
+        "axes.titlesize": 15,
+        "xtick.labelsize": 15,
+        "ytick.labelsize": 15,
+        "legend.fontsize": 14,
+    })
 
-    axes[1].scatter(x_exf_tolerance, tolerance_exf_df["exf_time"], label=r"ResidualTol=$10^{-5}$", color="tab:blue", marker="o", s=18, alpha=1)
-    axes[1].scatter(x_exf_config, config_exf_df["exf_time"], label=r"ResidualTol=$10^{-7}$", color="tab:orange", marker="o", s=18, alpha=0.5)
+    axes[0].scatter(x_inf_tolerance, tolerance_inf_df["inf_time"], label=r"Solver residual tolerance=$10^{-5}$", color="tab:blue", marker="o", s=18, alpha=1)
+    axes[0].scatter(x_inf_config, config_inf_df["inf_time"], label=r"Solver residual tolerance=$10^{-7}$", color="tab:orange", marker="o", s=18, alpha=0.5)
 
-    axes[0].set_title("Infiltration time")
-    axes[1].set_title("Drainage time")
+    axes[1].scatter(x_exf_tolerance, tolerance_exf_df["exf_time"], label=r"Solver residual tolerance=$10^{-5}$", color="tab:blue", marker="o", s=18, alpha=1)
+    axes[1].scatter(x_exf_config, config_exf_df["exf_time"], label=r"Solver residual tolerance=$10^{-7}$", color="tab:orange", marker="o", s=18, alpha=0.5)
+
+    axes[0].set_title("Infiltration quasi-steady-state time")
+    axes[1].set_title("Drainage quasi-steady-state time")
 
     for ax, ylabel in zip(axes, [r"$t_{i}$ (hr)", r"$t_{d}$ (hr)"]):
         ax.set_yscale("log")
-        ax.set_xlabel("water table depth (m)")
-        ax.set_ylabel(ylabel)
+        ax.set_xlabel(r"water table depth $d$ (m)", fontsize=15)
+        ax.set_ylabel(ylabel, fontsize=15)
         ax.grid(True, lw=0.5)
+        ax.tick_params(axis="both", labelsize=14)
         ax.legend(framealpha=0.7)
+
+    axes[0].text(0.02, 0.98, "(a)", transform=axes[0].transAxes,
+                 fontsize=14, fontweight="bold", va="top")
+    axes[1].text(0.02, 0.98, "(b)", transform=axes[1].transAxes,
+                 fontsize=14, fontweight="bold", va="top")
 
     fig.tight_layout()
     # fig.savefig(os.path.join(output_path, "compare_inf_exf_times_between_files.pdf"), dpi=500, bbox_inches="tight")
