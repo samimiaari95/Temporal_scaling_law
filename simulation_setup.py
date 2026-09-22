@@ -1,5 +1,6 @@
 from file_io import DIRPATH, SCRATCHPATH, write_settings_file
 import os
+import re
 from utils import make_dir
 import random
 import pandas as pd
@@ -145,6 +146,73 @@ def simulation_bash():
     # Write updated script
     with open(filepath, 'w') as f:
         f.write('\n'.join(sbatch))
+
+
+def update_residualtol10_09_files():
+    """
+    Update pfset values for the residual tolerance sweep cases in place.
+
+    This function edits only the requested pfset values inside the existing
+    exfiltration.tcl and infiltration.tcl files for cases 0-999 under
+    SCRATCHPATH/tolerance_sensitivity/residualtol10-09.
+    """
+    ########## time requirements #############
+    # took 20min for 3500000 out of the 10000000 for one case of 10-9, so needs approx 1hr for one 10-9 case, so 1000 cases will take 1000hrs, so 1000hrs*48cores= 48000 core hours
+    # took 1min for xxx for one case of 10-5, so needs approx 1min for one 10-5 case, so 1000 cases will take 1000min, so 16.67hrs*48cores= 800 core hours
+
+    base_dir = os.path.join(SCRATCHPATH, "tolerance_sensitivity", "residualtol10-9")
+
+    file_updates = {
+        "exfiltration.tcl": {
+            "TimingInfo.StopTime": "6000000.0",
+            "TimingInfo.DumpInterval": "6000000.0",
+            "Solver.MaxIter": "6000000",
+            # "TimingInfo.StopTime": "50000.0",
+            # "TimingInfo.DumpInterval": "50000.0",
+            # "Solver.MaxIter": "100000",
+            "Solver.Nonlinear.ResidualTol": "1e-9",
+        },
+        "infiltration.tcl": {
+            "TimingInfo.StopTime": "10000.0",
+            "TimingInfo.DumpInterval": "10000.0",
+            "Solver.Nonlinear.ResidualTol": "1e-9",
+        },
+    }
+
+    pattern_cache = {
+        key: re.compile(rf"^(\s*pfset\s+{re.escape(key)}\s+)(\S+)(\s*(?:#.*)?)$")
+        for updates in file_updates.values()
+        for key in updates
+    }
+
+    for case_index in range(1000):
+        if case_index == 839:
+            continue
+        print(f"Updating residual tolerance for test_case{case_index}...")
+        case_dir = os.path.join(base_dir, f"test_case{case_index}")
+
+        for filename, updates in file_updates.items():
+            filepath = os.path.join(case_dir, filename)
+            if not os.path.exists(filepath):
+                raise FileNotFoundError(f"File not found: {filepath}")
+
+            with open(filepath, "r") as f:
+                lines = f.readlines()
+
+            updated_lines = []
+            for line in lines:
+                updated_line = line
+                for key, value in updates.items():
+                    match = pattern_cache[key].match(line.rstrip("\n"))
+                    if match:
+                        updated_line = f"{match.group(1)}{value}{match.group(3)}"
+                        if line.endswith("\n"):
+                            updated_line += "\n"
+                        break
+                updated_lines.append(updated_line)
+
+            with open(filepath, "w") as f:
+                f.writelines(updated_lines)
 
 def parflow_namelist_inex():
     """
